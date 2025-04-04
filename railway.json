@@ -4,12 +4,13 @@
       "nixpacksPlan": {
         "phases": {
           "setup": {
-            "commands": ["pip install -r requirements.txt"]
+            "commands": ["pip install -r backend/requirements.txt"]
           },
           "start": {
-            "cmd": "python manage.py migrate && gunicorn yourproject.wsgi:application"
+            "cmd": "cd backend && python manage.py migrate && gunicorn asset_library.wsgi:application"
           }
         }
       }
     }
   }
+  
