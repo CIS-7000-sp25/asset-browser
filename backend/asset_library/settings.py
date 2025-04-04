@@ -84,9 +84,15 @@ WSGI_APPLICATION = "asset_library.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("Missing DATABASE_URL environment variable")
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', 'mysql://root:WTPBphRmLRjqtSUGAJxePWROnMGyCwOI@shuttle.proxy.rlwy.net:40562/railway'),
+        default=DATABASE_URL,
         conn_max_age=600,
     )
     #'default': {
