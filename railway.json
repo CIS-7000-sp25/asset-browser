@@ -9,12 +9,14 @@
               "pip3 install --upgrade pip",
               "pip3 install -r backend/requirements.txt"
             ]
-          },
-          "start": {
-            "cmds": ["cd backend && /usr/local/bin/gunicorn asset_library.wsgi:application --bind 0.0.0.0:8000"]
           }
         }
       }
-    }
+    },
+    "deploy": {
+        "startCommand": "cd backend && /usr/local/bin/gunicorn asset_library.wsgi:application --bind 0.0.0.0:8000",
+        "restartPolicyType": "ON_FAILURE",
+        "restartPolicyMaxRetries": 3
+      }
   }
   
