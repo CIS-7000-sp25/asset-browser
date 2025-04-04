@@ -9,6 +9,7 @@ charset-normalizer==3.4.1
 Cython==3.0.12
 dataclasses-json==0.6.7
 Django==4.2.20
+django-cors-headers==4.7.0
 idna==3.10
 jmespath==1.0.1
 marshmallow==3.26.1
