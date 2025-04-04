@@ -14,7 +14,6 @@ idna==3.10
 jmespath==1.0.1
 marshmallow==3.26.1
 mypy-extensions==1.0.0
-mysqlclient==2.2.7
 mysql-connector-python==9.2.0
 numpy>=2.0.2, <=2.2.4
 packaging==24.2
