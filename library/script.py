@@ -1,6 +1,7 @@
 import os
 from library.models import Asset, AssetVersion, Commit, Keyword, Author
 from datetime import datetime
+from dateutil import parser
 import uuid
 from pathlib import Path
 import json
@@ -15,7 +16,7 @@ class Script:
         self.addAuthors()
         for assetFolder in folder_path.iterdir():
             with (assetFolder / "metadata.json").open('r') as f:
-                print("Processing", assetFolder)
+                # print("Processing", assetFolder)
                 metadata = json.load(f)
                 
                 id = uuid.uuid4()
@@ -25,24 +26,41 @@ class Script:
                 assetStructureVersion = metadata["assetStructureVersion"]
                 hasTexture = metadata["hasTexture"]
                 thumbnailKey = f"{assetName}/thumbnail.png"
+                print(f"asset = Asset(id=uuid.uuid4(), assetName=\"{assetName}\", assetStructureVersion=\"{assetStructureVersion}\", hasTexture=\"{hasTexture}\", thumbnailKey=\"{thumbnailKey}\")")
+                print("asset.save()")
                 asset = Asset(id=id, assetName=assetName, assetStructureVersion=assetStructureVersion, hasTexture=hasTexture, thumbnailKey=thumbnailKey)
                 asset.save()
                 for keyword in metadata["keywords"]:
+                    print(f"keyword, created = Keyword.objects.get_or_create(keyword=\"{keyword.lower()}\")")
+                    print("asset.keywordsList.add(keyword)")
                     keyword, created = Keyword.objects.get_or_create(keyword=keyword.lower())
                     asset.keywordsList.add(keyword)
 
                 for commit in metadata["commitHistory"]:
                     author = Author.objects.filter(pennkey=commit["author"]).first()
+                    print(f"author = Author.objects.filter(pennkey=\"{commit['author']}\").first()")
                     if author is None:
+                        print(f"author = Author(pennkey=\"{commit['author']}\", firstName='', lastName='')")
+                        print("author.save()")
                         author = Author(pennkey=commit["author"], firstName="", lastName="")
                         author.save()
-                        print(f"Author {commit['author']} not found, created new author.")
+                        #print(f"Author {commit['author']} not found, created new author.")
                     version = commit["version"] 
                     timestamp = datetime.fromisoformat(commit["timestamp"])
                     note = commit["note"]
+                    print(f"commit = Commit(author=author, version=\"{version}\", timestamp=parser.parse(\"{timestamp}\"), note=\"{note}\", asset=asset)")
+                    print("commit.save()")
                     commit = Commit(author=author, version=version, timestamp=timestamp, note=note, asset=asset)
                     commit.save()
 
+                print(f"variantSet = AssetVersion(id=uuid.uuid4(), versionName='Variant Set', filepath={'./' + f'{assetName}.usda'}, asset=asset)")
+                print("variantSet.save()")
+                print(f"lod0 = AssetVersion(id=uuid.uuid4(), versionName='LOD0', filepath={'./LODs/' + f'{assetName}_LOD0.usda'}, asset=asset)")
+                print("lod0.save()")
+                print(f"lod1 = AssetVersion(id=uuid.uuid4(), versionName='LOD1', filepath={'./LODs/' + f'{assetName}_LOD1.usda'}, asset=asset)")
+                print("lod1.save()")
+                print(f"lod2 = AssetVersion(id=uuid.uuid4(), versionName='LOD2', filepath={'./LODs/' + f'{assetName}_LOD2.usda'}, asset=asset)")
+                print("lod2.save()")
                 variantSet = AssetVersion(id=uuid.uuid4(), versionName="Variant Set", filepath=assetFolder / f"{assetName}.usda", asset=asset)
                 variantSet.save()
                 lod0 = AssetVersion(id=uuid.uuid4(), versionName="LOD0", filepath=assetFolder / "LODs" / f"{assetName}_LOD0.usda", asset=asset)
