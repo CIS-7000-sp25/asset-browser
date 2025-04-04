@@ -1,16 +1,15 @@
 {
     "build": {
       "builder": "NIXPACKS",
-      "nixpacksPlan": {
+      "nixpacksConfig": {
         "phases": {
-          "setup": {
-            "commands": ["pip install -r backend/requirements.txt"]
+          "install": {
+            "cmds": ["cd backend && pip install -r requirements.txt && python manage.py migrate"]
           },
           "start": {
-            "cmd": "cd backend && python manage.py migrate && gunicorn asset_library.wsgi:application"
+            "cmds": ["cd backend && gunicorn myproject.wsgi:application --bind 0.0.0.0:8000"]
           }
         }
       }
     }
   }
-  
