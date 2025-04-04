@@ -1,0 +1,15 @@
+{
+    "build": {
+      "builder": "NIXPACKS",
+      "nixpacksPlan": {
+        "phases": {
+          "setup": {
+            "commands": ["pip install -r requirements.txt"]
+          },
+          "start": {
+            "cmd": "python manage.py migrate && gunicorn yourproject.wsgi:application"
+          }
+        }
+      }
+    }
+  }
