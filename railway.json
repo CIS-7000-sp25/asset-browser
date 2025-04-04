@@ -7,7 +7,7 @@
             "cmds": ["cd backend && pip install -r requirements.txt && python manage.py migrate"]
           },
           "start": {
-            "cmds": ["cd backend && gunicorn myproject.wsgi:application --bind 0.0.0.0:8000"]
+            "cmds": ["cd backend && gunicorn asset_library.wsgi:application --bind 0.0.0.0:8000"]
           }
         }
       }
