@@ -91,22 +91,22 @@ if not DATABASE_URL:
     raise ValueError("Missing DATABASE_URL environment variable")
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=DATABASE_URL,
-        conn_max_age=600,
-    )
-    #'default': {
-    #    'ENGINE': 'django.db.backends.mysql',
-    #    'NAME': 'assets',
-    #    'USER': 'admin',
-    #    'PASSWORD': 'terskayl',
-    #    'HOST': 'localhost',
-    #    'PORT': '3306',
-    #    'OPTIONS': {
-    #        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-    #        'charset': 'utf8mb4',
-    #    },
-    #}
+    #'default': dj_database_url.config(
+    #    default=DATABASE_URL,
+    #    conn_max_age=600,
+    #)
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'railway',
+        'USER': 'root',
+        'PASSWORD': 'WTPBphRmLRjqtSUGAJxePWROnMGyCwOI',
+        'HOST': 'shuttle.proxy.rlwy.net',
+        'PORT': '40562',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        },
+    }
 }
 
 #DATABASES['default']['ENGINE'] = 'mysql.connector.django'
