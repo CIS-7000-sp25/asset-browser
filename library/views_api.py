@@ -16,7 +16,6 @@ from rest_framework import serializers
 class UserSerializer(serializers.Serializer):
     pennId = serializers.CharField()
     fullName = serializers.CharField()
-    email = serializers.CharField()
 
 class AssetReferenceSerializer(serializers.Serializer):
     name = serializers.CharField()
@@ -29,17 +28,12 @@ class CommitReferenceSerializer(serializers.Serializer):
     timestamp = serializers.DateTimeField()
     note = serializers.CharField()
 
-class UserDetailSerializer(UserSerializer):
-    firstName = serializers.CharField()
-    lastName = serializers.CharField()
-    checkedOutAssets = AssetReferenceSerializer(many=True)
-    recentCommits = CommitReferenceSerializer(many=True)
 
 class CommitSerializer(serializers.Serializer):
     commitId = serializers.CharField()
     pennKey = serializers.CharField()
     versionNum = serializers.CharField()
-    notes = serializers.CharField()
+    note = serializers.CharField()
     commitDate = serializers.DateTimeField()
     hasMaterials = serializers.BooleanField()
     state = serializers.ListField(child=serializers.CharField())
@@ -52,9 +46,6 @@ class CommitDetailSerializer(CommitSerializer):
 # Response serializers
 class UsersResponseSerializer(serializers.Serializer):
     users = UserSerializer(many=True)
-
-class UserDetailResponseSerializer(serializers.Serializer):
-    user = UserDetailSerializer()
 
 class CommitsResponseSerializer(serializers.Serializer):
     commits = CommitSerializer(many=True)
@@ -952,7 +943,7 @@ def get_users(request):
         )
     ],
     responses={
-        200: UserDetailResponseSerializer,
+        200: UserSerializer,
         404: ErrorResponseSerializer,
         500: ErrorResponseSerializer,
     },
