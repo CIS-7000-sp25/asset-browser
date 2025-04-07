@@ -89,6 +89,14 @@ class AssetsResponseSerializer(serializers.Serializer):
 class AssetDetailResponseSerializer(serializers.Serializer):
     asset = AssetSerializer()
 
+# Add these serializers at the top with the other serializers
+class CheckoutRequestSerializer(serializers.Serializer):
+    pennkey = serializers.CharField(help_text="The pennkey of the user checking out the asset")
+
+class CheckoutResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    asset = serializers.DictField(child=serializers.CharField(), help_text="Details of the checked out asset")
+
 # Update the get_assets endpoint with documentation
 @extend_schema(
     summary="List all assets",
@@ -422,9 +430,115 @@ def upload_S3_asset(request, asset_name):
     except Exception as e:
         return Response({'error': str(e)}, status=500)
 
-# TODO: This is a temporary endpoint for testing. Once we have a proper auth system, we should use that.
+@extend_schema(
+    summary="Checkout an asset",
+    description="""
+    Checks out an asset to a specific user. 
+    
+    Requirements:
+    - The asset must exist
+    - The asset must not be already checked out
+    - The pennkey must correspond to an existing user
+    - The pennkey must be provided in the request body
+    
+    The endpoint will:
+    1. Verify the asset exists
+    2. Verify the user (pennkey) exists
+    3. Check if the asset is available for checkout
+    4. Assign the asset to the user
+    
+    On success, returns a confirmation message and updated asset details.
+    """,
+    parameters=[
+        OpenApiParameter(
+            name='asset_name',
+            location=OpenApiParameter.PATH,
+            description='The name of the asset to check out',
+            required=True,
+            type=str
+        )
+    ],
+    request=CheckoutRequestSerializer,
+    responses={
+        200: CheckoutResponseSerializer,
+        400: ErrorResponseSerializer,
+        404: ErrorResponseSerializer,
+        500: ErrorResponseSerializer,
+    },
+    examples=[
+        OpenApiExample(
+            'Success Response',
+            description='Example of a successful checkout',
+            value={
+                'message': 'Asset checked out successfully',
+                'asset': {
+                    'name': 'cool_character',
+                    'checkedOutBy': 'willcai',
+                    'isCheckedOut': True
+                }
+            },
+            response_only=True,
+            status_codes=['200']
+        ),
+        OpenApiExample(
+            'Request Body Example',
+            description='Example of the request body',
+            value={
+                'pennkey': 'willcai'
+            },
+            request_only=True
+        ),
+        OpenApiExample(
+            'Asset Not Found Error',
+            description='Example when the asset does not exist',
+            value={
+                'error': 'Asset not found'
+            },
+            response_only=True,
+            status_codes=['404']
+        ),
+        OpenApiExample(
+            'User Not Found Error',
+            description='Example when the user does not exist',
+            value={
+                'error': 'User not found'
+            },
+            response_only=True,
+            status_codes=['404']
+        ),
+        OpenApiExample(
+            'Already Checked Out Error',
+            description='Example when the asset is already checked out',
+            value={
+                'error': 'Asset is already checked out by Christina Qiu'
+            },
+            response_only=True,
+            status_codes=['400']
+        ),
+        OpenApiExample(
+            'Missing Pennkey Error',
+            description='Example when pennkey is not provided',
+            value={
+                'error': 'pennkey is required'
+            },
+            response_only=True,
+            status_codes=['400']
+        )
+    ],
+    methods=['POST']
+)
 @api_view(['POST'])
 def checkout_asset(request, asset_name):
+    """
+    Checkout an asset to a user.
+    
+    Args:
+        request: The HTTP request containing the pennkey in the body
+        asset_name: The name of the asset to check out
+        
+    Returns:
+        Response with success message and asset details or error message
+    """
     try:
         print(f"Request data: {request.data}")
         print(f"Request headers: {request.headers}")
