@@ -8,7 +8,7 @@ from .utils.zipper import zip_files_from_memory
 from django.utils import timezone
 from django.db.models import OuterRef, Subquery
 import os
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample, inline_serializer
 from drf_spectacular.types import OpenApiTypes
 from rest_framework import serializers
 
@@ -65,6 +65,146 @@ class CommitDetailResponseSerializer(serializers.Serializer):
 class ErrorResponseSerializer(serializers.Serializer):
     error = serializers.CharField()
 
+# Add these serializers at the top with the other serializers
+class KeywordSerializer(serializers.Serializer):
+    keyword = serializers.CharField()
+
+class AssetSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    thumbnailUrl = serializers.URLField(allow_null=True)
+    version = serializers.CharField()
+    creator = serializers.CharField()
+    lastModifiedBy = serializers.CharField()
+    checkedOutBy = serializers.CharField(allow_null=True)
+    isCheckedOut = serializers.BooleanField()
+    materials = serializers.BooleanField()
+    keywords = serializers.ListField(child=serializers.CharField())
+    description = serializers.CharField()
+    createdAt = serializers.DateTimeField()
+    updatedAt = serializers.DateTimeField()
+
+class AssetsResponseSerializer(serializers.Serializer):
+    assets = AssetSerializer(many=True)
+
+class AssetDetailResponseSerializer(serializers.Serializer):
+    asset = AssetSerializer()
+
+# Update the get_assets endpoint with documentation
+@extend_schema(
+    summary="List all assets",
+    description="""
+    Returns a list of all assets in the system.
+    
+    Supports filtering by:
+    - search: Search term for asset name or keywords
+    - author: Filter by creator or last modifier
+    - checkedInOnly: Show only assets that are not checked out
+    
+    Supports sorting by:
+    - name: Sort by asset name
+    - author: Sort by creator name
+    - updated: Sort by last update time (default)
+    - created: Sort by creation time
+    
+    The response includes for each asset:
+    - name: Asset name (unique identifier)
+    - thumbnailUrl: URL to the asset's thumbnail image
+    - version: Current version number
+    - creator: Name of the asset creator
+    - lastModifiedBy: Name of the last person to modify the asset
+    - checkedOutBy: PennKey of user who has checked out the asset (if any)
+    - isCheckedOut: Whether the asset is currently checked out
+    - materials: Whether the asset has associated materials
+    - keywords: List of keywords/tags associated with the asset
+    - description: Asset description from the latest commit
+    - createdAt: Timestamp of asset creation
+    - updatedAt: Timestamp of last modification
+    """,
+    parameters=[
+        OpenApiParameter(
+            name='search',
+            location=OpenApiParameter.QUERY,
+            description='Search term for filtering assets by name or keywords',
+            required=False,
+            type=str
+        ),
+        OpenApiParameter(
+            name='author',
+            location=OpenApiParameter.QUERY,
+            description='Filter assets by creator or last modifier name',
+            required=False,
+            type=str
+        ),
+        OpenApiParameter(
+            name='checkedInOnly',
+            location=OpenApiParameter.QUERY,
+            description='If true, only show assets that are not checked out',
+            required=False,
+            type=bool
+        ),
+        OpenApiParameter(
+            name='sortBy',
+            location=OpenApiParameter.QUERY,
+            description='Field to sort by (name, author, updated, created)',
+            required=False,
+            type=str,
+            default='updated'
+        )
+    ],
+    responses={
+        200: AssetsResponseSerializer,
+        500: ErrorResponseSerializer,
+    },
+    examples=[
+        OpenApiExample(
+            'Success Response',
+            description='Example of a successful response with multiple assets',
+            value={
+                'assets': [
+                    {
+                        'name': 'cool_character',
+                        'thumbnailUrl': 'https://assets.example.com/thumbnails/cool_character.png',
+                        'version': '2.1.0',
+                        'creator': 'Will Cai',
+                        'lastModifiedBy': 'Christina Qiu',
+                        'checkedOutBy': 'chuu',
+                        'isCheckedOut': True,
+                        'materials': True,
+                        'keywords': ['character', '3D', 'fantasy'],
+                        'description': 'Updated character materials and textures',
+                        'createdAt': '2025-02-18T02:20:00+00:00',
+                        'updatedAt': '2025-02-18T02:20:00+00:00'
+                    },
+                    {
+                        'name': 'environment_props',
+                        'thumbnailUrl': 'https://assets.example.com/thumbnails/environment_props.png',
+                        'version': '1.0.0',
+                        'creator': 'Cindy Xu',
+                        'lastModifiedBy': 'Cindy Xu',
+                        'checkedOutBy': None,
+                        'isCheckedOut': False,
+                        'materials': True,
+                        'keywords': ['environment', 'props', '3D'],
+                        'description': 'Initial commit of environment props',
+                        'createdAt': '2025-02-18T02:20:00+00:00',
+                        'updatedAt': '2025-02-18T02:20:00+00:00'
+                    }
+                ]
+            },
+            response_only=True,
+            status_codes=['200']
+        ),
+        OpenApiExample(
+            'Error Response',
+            description='Example of an error response',
+            value={
+                'error': 'Internal server error occurred while fetching assets'
+            },
+            response_only=True,
+            status_codes=['500']
+        )
+    ]
+)
 @api_view(['GET'])
 def get_assets(request):
     try:
@@ -161,6 +301,67 @@ def get_assets(request):
         print(f"Error in get_assets: {str(e)}")
         return Response({'error': str(e)}, status=500)
     
+@extend_schema(
+    summary="Get asset details",
+    description="""
+    Returns detailed information about a specific asset.
+    
+    The response includes:
+    - All basic asset information (name, version, etc.)
+    - Current checkout status
+    - Creator and last modifier information
+    - Associated keywords and materials status
+    - Creation and last update timestamps
+    - Thumbnail URL if available
+    """,
+    parameters=[
+        OpenApiParameter(
+            name='asset_name',
+            location=OpenApiParameter.PATH,
+            description='The name of the asset to retrieve',
+            required=True,
+            type=str
+        )
+    ],
+    responses={
+        200: AssetDetailResponseSerializer,
+        404: ErrorResponseSerializer,
+        500: ErrorResponseSerializer,
+    },
+    examples=[
+        OpenApiExample(
+            'Success Response',
+            description='Example of a successful response with asset details',
+            value={
+                'asset': {
+                    'name': 'cool_character',
+                    'thumbnailUrl': 'https://assets.example.com/thumbnails/cool_character.png',
+                    'version': '2.1.0',
+                    'creator': 'Will Cai',
+                    'lastModifiedBy': 'Christina Qiu',
+                    'checkedOutBy': 'chuu',
+                    'isCheckedOut': True,
+                    'materials': True,
+                    'keywords': ['character', '3D', 'fantasy'],
+                    'description': 'Updated character materials and textures',
+                    'createdAt': '2025-02-18T02:20:00+00:00',
+                    'updatedAt': '2025-02-18T02:20:00+00:00'
+                }
+            },
+            response_only=True,
+            status_codes=['200']
+        ),
+        OpenApiExample(
+            'Not Found Response',
+            description='Example when asset is not found',
+            value={
+                'error': 'Asset not found'
+            },
+            response_only=True,
+            status_codes=['404']
+        )
+    ]
+)
 @api_view(['GET'])
 def get_asset(request, asset_name):
     try:
@@ -314,11 +515,55 @@ def download_asset(request, asset_name):
 
 @extend_schema(
     summary="List all commits",
-    description="Returns a list of all commits in the system.",
+    description="""
+    Returns a list of all commits in the system.
+    
+    The response includes for each commit:
+    - commitId: Unique identifier for the commit
+    - pennKey: Author's Penn ID
+    - versionNum: Version number of the commit
+    - notes: Commit message/notes
+    - commitDate: Timestamp of the commit
+    - hasMaterials: Whether the commit includes material changes
+    - state: List of state flags
+    - assetName: Name of the associated asset
+    """,
     responses={
         200: CommitsResponseSerializer,
         500: ErrorResponseSerializer,
-    }
+    },
+    examples=[
+        OpenApiExample(
+            'Success Response',
+            description='Example of a successful response with multiple commits',
+            value={
+                'commits': [
+                    {
+                        'commitId': '123e4567-e89b-12d3-a456-426614174000',
+                        'pennKey': 'willcai',
+                        'versionNum': '1.0.0',
+                        'notes': 'Initial commit of cool_asset',
+                        'commitDate': '2025-04-07T09:50:00Z',
+                        'hasMaterials': True,
+                        'state': ['approved'],
+                        'assetName': 'cool_asset'
+                    },
+                    {
+                        'commitId': '987fcdeb-51a2-43d7-9876-543210987654',
+                        'pennKey': 'chuu',
+                        'versionNum': '1.1.0',
+                        'notes': 'Updated materials',
+                        'commitDate': '2025-04-07T10:15:00Z',
+                        'hasMaterials': True,
+                        'state': ['pending_review'],
+                        'assetName': 'another_asset'
+                    }
+                ]
+            },
+            response_only=True,
+            status_codes=['200']
+        )
+    ]
 )
 @api_view(['GET'])
 def get_commits(request):
@@ -348,7 +593,15 @@ def get_commits(request):
 
 @extend_schema(
     summary="Get commit details",
-    description="Returns detailed information about a specific commit.",
+    description="""
+    Returns detailed information about a specific commit.
+    
+    The response includes:
+    - All basic commit information (id, version, notes, etc.)
+    - Author's full name and details
+    - Associated asset information
+    - Detailed material/sublayer information
+    """,
     parameters=[
         OpenApiParameter(
             name='commit_id',
@@ -362,7 +615,38 @@ def get_commits(request):
         200: CommitDetailResponseSerializer,
         404: ErrorResponseSerializer,
         500: ErrorResponseSerializer,
-    }
+    },
+    examples=[
+        OpenApiExample(
+            'Success Response',
+            description='Example of a successful response with commit details',
+            value={
+                'commit': {
+                    'commitId': '123e4567-e89b-12d3-a456-426614174000',
+                    'pennKey': 'willcai',
+                    'versionNum': '1.0.0',
+                    'notes': 'Initial commit of cool_asset',
+                    'commitDate': '2025-04-07T09:50:00Z',
+                    'hasMaterials': True,
+                    'state': ['approved'],
+                    'assetName': 'cool_asset',
+                    'authorName': 'Will Cai',
+                    'assetId': '987fcdeb-51a2-43d7-9876-543210987654'
+                }
+            },
+            response_only=True,
+            status_codes=['200']
+        ),
+        OpenApiExample(
+            'Not Found Response',
+            description='Example when commit is not found',
+            value={
+                'error': 'Commit not found'
+            },
+            response_only=True,
+            status_codes=['404']
+        )
+    ]
 )
 @api_view(['GET'])
 def get_commit(request, commit_id):
@@ -403,7 +687,13 @@ def get_commit(request, commit_id):
 
 @extend_schema(
     summary="List all users",
-    description="Returns a list of all users in the system with their basic information.",
+    description="""
+    Returns a list of all users in the system with their basic information.
+    
+    The response includes:
+    - pennId: User's Penn ID (unique identifier)
+    - fullName: User's full name
+    """,
     responses={
         200: UsersResponseSerializer,
         500: ErrorResponseSerializer,
@@ -411,17 +701,30 @@ def get_commit(request, commit_id):
     examples=[
         OpenApiExample(
             'Success Response',
+            description='Example of a successful response with multiple users',
             value={
                 'users': [
                     {
                         'pennId': 'willcai',
                         'fullName': 'Will Cai',
-                        'email': 'willcai@upenn.edu'
+                    },
+                    {
+                        'pennId': 'chuu',
+                        'fullName': 'Christina Qiu',
                     }
                 ]
             },
             response_only=True,
             status_codes=['200']
+        ),
+        OpenApiExample(
+            'Error Response',
+            description='Example of an error response',
+            value={
+                'error': 'Internal server error occurred'
+            },
+            response_only=True,
+            status_codes=['500']
         )
     ]
 )
@@ -439,7 +742,6 @@ def get_users(request):
             users_list.append({
                 'pennId': author.pennkey,
                 'fullName': f"{author.firstName} {author.lastName}".strip() or author.pennkey,
-                'email': author.email
             })
 
         return Response({'users': users_list})
@@ -448,7 +750,12 @@ def get_users(request):
 
 @extend_schema(
     summary="Get user details",
-    description="Returns detailed information about a specific user including their checked out assets and recent commits.",
+    description="""
+    Returns detailed information about a specific user.
+    
+    The response includes:
+    - Basic user information (pennId, fullName)
+    """,
     parameters=[
         OpenApiParameter(
             name='pennkey',
@@ -462,7 +769,30 @@ def get_users(request):
         200: UserDetailResponseSerializer,
         404: ErrorResponseSerializer,
         500: ErrorResponseSerializer,
-    }
+    },
+    examples=[
+        OpenApiExample(
+            'Success Response',
+            description='Example of a successful response with user details',
+            value={
+                'user': {
+                    'pennId': 'willcai',
+                    'fullName': 'Will Cai',
+                }
+            },
+            response_only=True,
+            status_codes=['200']
+        ),
+        OpenApiExample(
+            'Not Found Response',
+            description='Example when user is not found',
+            value={
+                'error': 'User not found'
+            },
+            response_only=True,
+            status_codes=['404']
+        )
+    ]
 )
 @api_view(['GET'])
 def get_user(request, pennkey):
