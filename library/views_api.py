@@ -8,6 +8,62 @@ from .utils.zipper import zip_files_from_memory
 from django.utils import timezone
 from django.db.models import OuterRef, Subquery
 import os
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
+
+# First, let's create serializers for our response types
+class UserSerializer(serializers.Serializer):
+    pennId = serializers.CharField()
+    fullName = serializers.CharField()
+    email = serializers.CharField()
+
+class AssetReferenceSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    id = serializers.CharField()
+
+class CommitReferenceSerializer(serializers.Serializer):
+    commitId = serializers.CharField()
+    assetName = serializers.CharField()
+    version = serializers.CharField()
+    timestamp = serializers.DateTimeField()
+    note = serializers.CharField()
+
+class UserDetailSerializer(UserSerializer):
+    firstName = serializers.CharField()
+    lastName = serializers.CharField()
+    checkedOutAssets = AssetReferenceSerializer(many=True)
+    recentCommits = CommitReferenceSerializer(many=True)
+
+class CommitSerializer(serializers.Serializer):
+    commitId = serializers.CharField()
+    pennKey = serializers.CharField()
+    versionNum = serializers.CharField()
+    notes = serializers.CharField()
+    commitDate = serializers.DateTimeField()
+    hasMaterials = serializers.BooleanField()
+    state = serializers.ListField(child=serializers.CharField())
+    assetName = serializers.CharField()
+
+class CommitDetailSerializer(CommitSerializer):
+    authorName = serializers.CharField()
+    assetId = serializers.CharField()
+
+# Response serializers
+class UsersResponseSerializer(serializers.Serializer):
+    users = UserSerializer(many=True)
+
+class UserDetailResponseSerializer(serializers.Serializer):
+    user = UserDetailSerializer()
+
+class CommitsResponseSerializer(serializers.Serializer):
+    commits = CommitSerializer(many=True)
+
+class CommitDetailResponseSerializer(serializers.Serializer):
+    commit = CommitDetailSerializer()
+
+class ErrorResponseSerializer(serializers.Serializer):
+    error = serializers.CharField()
 
 @api_view(['GET'])
 def get_assets(request):
@@ -256,8 +312,20 @@ def download_asset(request, asset_name):
         print(f"Error in download_asset: {str(e)}")
         return Response({'error': str(e)}, status=500)
 
+@extend_schema(
+    summary="List all commits",
+    description="Returns a list of all commits in the system.",
+    responses={
+        200: CommitsResponseSerializer,
+        500: ErrorResponseSerializer,
+    }
+)
 @api_view(['GET'])
 def get_commits(request):
+    """
+    Get a list of all commits in the system.
+    Returns basic information about each commit including the author, version, and timestamp.
+    """
     try:
         commits = Commit.objects.all().order_by('-timestamp')
         commits_list = []
@@ -278,8 +346,30 @@ def get_commits(request):
     except Exception as e:
         return Response({'error': str(e)}, status=500)
 
+@extend_schema(
+    summary="Get commit details",
+    description="Returns detailed information about a specific commit.",
+    parameters=[
+        OpenApiParameter(
+            name='commit_id',
+            location=OpenApiParameter.PATH,
+            description='The ID of the commit to retrieve',
+            required=True,
+            type=str
+        )
+    ],
+    responses={
+        200: CommitDetailResponseSerializer,
+        404: ErrorResponseSerializer,
+        500: ErrorResponseSerializer,
+    }
+)
 @api_view(['GET'])
 def get_commit(request, commit_id):
+    """
+    Get detailed information about a specific commit.
+    Includes the commit details, author information, and associated asset information.
+    """
     try:
         commit = Commit.objects.get(id=commit_id)
         
@@ -311,8 +401,36 @@ def get_commit(request, commit_id):
     except Exception as e:
         return Response({'error': str(e)}, status=500)
 
+@extend_schema(
+    summary="List all users",
+    description="Returns a list of all users in the system with their basic information.",
+    responses={
+        200: UsersResponseSerializer,
+        500: ErrorResponseSerializer,
+    },
+    examples=[
+        OpenApiExample(
+            'Success Response',
+            value={
+                'users': [
+                    {
+                        'pennId': 'willcai',
+                        'fullName': 'Will Cai',
+                        'email': 'willcai@upenn.edu'
+                    }
+                ]
+            },
+            response_only=True,
+            status_codes=['200']
+        )
+    ]
+)
 @api_view(['GET'])
 def get_users(request):
+    """
+    Get a list of all users in the system.
+    Returns basic information about each user including their Penn ID and full name.
+    """
     try:
         authors = Author.objects.all().order_by('firstName', 'lastName')
         users_list = []
@@ -321,14 +439,37 @@ def get_users(request):
             users_list.append({
                 'pennId': author.pennkey,
                 'fullName': f"{author.firstName} {author.lastName}".strip() or author.pennkey,
+                'email': author.email
             })
 
         return Response({'users': users_list})
     except Exception as e:
         return Response({'error': str(e)}, status=500)
 
+@extend_schema(
+    summary="Get user details",
+    description="Returns detailed information about a specific user including their checked out assets and recent commits.",
+    parameters=[
+        OpenApiParameter(
+            name='pennkey',
+            location=OpenApiParameter.PATH,
+            description='The Penn key of the user to retrieve',
+            required=True,
+            type=str
+        )
+    ],
+    responses={
+        200: UserDetailResponseSerializer,
+        404: ErrorResponseSerializer,
+        500: ErrorResponseSerializer,
+    }
+)
 @api_view(['GET'])
 def get_user(request, pennkey):
+    """
+    Get detailed information about a specific user.
+    Includes their basic information, currently checked out assets, and recent commits.
+    """
     try:
         author = Author.objects.get(pennkey=pennkey)
         

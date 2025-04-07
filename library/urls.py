@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import views_api
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -17,4 +18,9 @@ urlpatterns = [
     path('api/commits/<str:commit_id>/', views_api.get_commit, name='get_commit'),
     path('api/users/', views_api.get_users, name='get_users'),
     path('api/users/<str:pennkey>/', views_api.get_user, name='get_user'),
+    # API Schema URLs
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    # Optional UI:
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
