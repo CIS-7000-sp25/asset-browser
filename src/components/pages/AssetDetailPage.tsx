@@ -153,6 +153,27 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
     }
   };
 
+  const handleDownload = async () => {
+    console.log("[DEBUG] handleDownload called with assetName:", assetName);
+    if (!assetName) {
+      console.log("[DEBUG] No assetName provided, returning early");
+      return;
+    }
+
+    try {
+      console.log("[DEBUG] Calling api.downloadAsset");
+      await api.downloadAsset(assetName);
+      console.log("[DEBUG] api.downloadAsset completed successfully");
+    } catch (error) {
+      console.error("[DEBUG] Error in handleDownload:", error);
+      toast({
+        title: "Download Error",
+        description: "Failed to download the asset. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Back button handler
   const handleBack = () => {
     window.history.back();
@@ -182,7 +203,7 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
             canCheckin={asset.isCheckedOut && !!user && asset.checkedOutBy === user.pennId}
             onCheckout={handleCheckout}
             onCheckin={handleCheckIn}
-            onDownload={() => window.open(`/api/assets/${asset.name}/download`, "_blank")}
+            onDownload={handleDownload}
             onLaunchDCC={() =>
               window.open(`/asset-preview?name=${encodeURIComponent(asset.name)}`, "_blank")
             }

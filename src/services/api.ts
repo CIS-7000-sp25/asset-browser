@@ -249,40 +249,34 @@ export const api = {
 
   // Download a copy of the asset
   async downloadAsset(assetName: string) {
+    console.log("[DEBUG] api.downloadAsset called with assetName:", assetName);
     try {
-      // In development, use mock data
-      if (process.env.NODE_ENV === "development") {
-        await simulateApiDelay();
-        const asset = mockAssets.find((a) => a.assetName === assetName);
-
-        if (!asset) {
-          throw new Error("Asset not found");
-        }
-
-        console.log(`Downloading asset ${assetName}: ${asset.assetName}`);
-
-        toast({
-          title: "Download Started",
-          description: `${asset.assetName} is being downloaded.`,
-        });
-
-        return { success: true };
-      }
-
-      // In production, call API
+      // Call API in both development and production
+      console.log("[DEBUG] Making API call to:", `${API_URL}/assets/${assetName}/download`);
       const response = await fetch(`${API_URL}/assets/${assetName}/download`);
+      console.log("[DEBUG] API response status:", response.status);
       if (!response.ok) throw new Error("Failed to download asset");
 
-      // Handle file download response
+      // Get the blob from the response
       const blob = await response.blob();
+      console.log("[DEBUG] Received blob of size:", blob.size);
+
+      // Create a URL for the blob
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `asset-${assetName}.zip`;
-      document.body.appendChild(a);
-      a.click();
+      console.log("[DEBUG] Created blob URL");
+
+      // Create a link and click it to download the file
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${assetName}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      console.log("[DEBUG] Triggered download");
+
+      // Clean up
       window.URL.revokeObjectURL(url);
-      a.remove();
+      document.body.removeChild(link);
+      console.log("[DEBUG] Cleaned up resources");
 
       toast({
         title: "Download Complete",
@@ -291,7 +285,7 @@ export const api = {
 
       return { success: true };
     } catch (error) {
-      console.error(`Failed to download asset ${assetName}:`, error);
+      console.error(`[DEBUG] Failed to download asset ${assetName}:`, error);
       toast({
         title: "Error",
         description: "Failed to download asset. Please try again.",

@@ -14,5 +14,9 @@ urlpatterns = [
     path('api/metadata/<str:asset_name>/', views_api.post_metadata, name='api_metadata_upload'),
     path('api/metadata/<str:asset_name>/', views_api.put_metadata, name='api_metadata_update'),
     path('api/assets/<str:asset_name>/checkout/', views_api.checkout_asset, name='api_asset_checkout'),
-    # path('api/assets/<str:asset_name>/checkin/', views_api.checkin_asset, name='api_asset_checkin'),
+    path('api/assets/<str:asset_name>/download/', views_api.download_asset, name='api_asset_download'),
+    path('api/commits/', views_api.get_commits, name='get_commits'),
+    path('api/commits/<str:commit_id>/', views_api.get_commit, name='get_commit'),
+    path('api/users/', views_api.get_users, name='get_users'),
+    path('api/users/<str:pennkey>/', views_api.get_user, name='get_user'),
 ]

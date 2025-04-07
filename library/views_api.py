@@ -1,12 +1,15 @@
 from datetime import datetime
 import uuid
-from django.http import JsonResponse
-from django.db.models import Q, Max, Min
+from django.http import StreamingHttpResponse
+from django.db.models import Q
 from .models import Asset, Author, Commit, AssetVersion, Keyword
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils.s3_utils import S3Manager 
+from .utils.zipper import zip_files_from_memory
 from django.utils import timezone
+from django.db.models import OuterRef, Subquery
+import os
 
 @api_view(['GET'])
 def get_assets(request):
@@ -19,6 +22,20 @@ def get_assets(request):
 
         # Base queryset
         assets = Asset.objects.all()
+
+        earliest_commit = Commit.objects.filter(asset=OuterRef('pk')).order_by('timestamp')
+        latest_commit   = Commit.objects.filter(asset=OuterRef('pk')).order_by('-timestamp')
+
+        assets = assets.annotate(
+            first_author_first = Subquery(
+                earliest_commit.values('author__firstName')[:1]
+            ),
+            first_author_last  = Subquery(
+                earliest_commit.values('author__lastName')[:1]
+            ),
+            first_ts  = Subquery(earliest_commit.values('timestamp')[:1]),
+            latest_ts = Subquery(latest_commit.values('timestamp')[:1]),
+        )
 
         # Apply search filter
         if search:
@@ -33,30 +50,28 @@ def get_assets(request):
 
         # Apply author filter
         if author:
-            assets = assets.filter(
-                Q(commits__author__firstName__icontains=author) |
-                Q(commits__author__lastName__icontains=author)
-            ).distinct()
+            for token in author.split():
+                assets = assets.filter(
+                    Q(first_author_first__icontains=token) |
+                    Q(first_author_last__icontains=token)
+                )
 
         # Apply sorting and ensure uniqueness
         if sort_by == 'name':
-            assets = assets.order_by('assetName').distinct()
+            assets = assets.order_by('assetName')
+
         elif sort_by == 'author':
-            # First get the latest commit for each asset
-            assets = assets.annotate(
-                latest_author_first=Max('commits__author__firstName'),
-                latest_author_last=Max('commits__author__lastName')
-            ).order_by('latest_author_first', 'latest_author_last').distinct()
+            # sort by the *creator* (author of the first commit)
+            assets = assets.order_by('first_author_first', 'first_author_last')
+
         elif sort_by == 'updated':
-            # First get the latest commit for each asset
-            assets = assets.annotate(
-                latest_timestamp=Max('commits__timestamp')
-            ).order_by('-latest_timestamp').distinct()
+            # most recently touched asset first
+            assets = assets.order_by('-latest_ts')
+
         elif sort_by == 'created':
-            # First get the earliest commit for each asset
-            assets = assets.annotate(
-                earliest_timestamp=Min('commits__timestamp')
-            ).order_by('earliest_timestamp').distinct()
+            # asset whose *first* commit is newest comes first
+            assets = assets.order_by('-first_ts')
+
 
         # Convert to frontend format
         assets_list = []
@@ -318,6 +333,7 @@ def put_metadata(request, asset_name, new_version):
     except Exception as e:
         return Response({'error' : str(e)}, status=500)
 
+# TODO: This is a temporary endpoint for testing. Once we have a proper auth system, we should use that.
 @api_view(['POST'])
 def checkout_asset(request, asset_name):
     try:
@@ -374,4 +390,123 @@ def checkout_asset(request, asset_name):
 
     except Exception as e:
         print(f"Unexpected error in checkout_asset: {str(e)}")
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+def download_asset(request, asset_name):
+    """Stream a zipped version of the entire asset folder from S3."""
+    try:
+        # Make sure the asset exists in the DB first (helps 404 early)
+        Asset.objects.get(assetName=asset_name)
+
+        s3 = S3Manager()
+        prefix = f"{asset_name}"
+        keys = s3.list_s3_files(prefix)
+
+        if not keys:
+            return Response({'error': 'No files found for this asset'}, status=404)
+
+        file_data = {}
+        for key in keys:
+            name_in_zip = os.path.relpath(key, prefix)
+            file_bytes  = s3.download_s3_file(key)
+            file_data[name_in_zip] = file_bytes
+
+        zip_buffer = zip_files_from_memory(file_data)
+
+        response = StreamingHttpResponse(zip_buffer, content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{asset_name}.zip"'
+        return response
+
+    except Asset.DoesNotExist:
+        return Response({'error': 'Asset not found'}, status=404)
+    except Exception as e:
+        print(f"Error in download_asset: {str(e)}")
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+def get_commits(request):
+    try:
+        commits = Commit.objects.all().order_by('-timestamp')
+        commits_list = []
+        
+        for commit in commits:
+            commits_list.append({
+                'commitId': str(commit.id),
+                'pennKey': commit.author.pennkey if commit.author else None,
+                'versionNum': commit.version,
+                'notes': commit.note,
+                'commitDate': commit.timestamp.isoformat(),
+                'hasMaterials': commit.sublayers.exists(),
+                'state': [],  # This matches the frontend interface but we don't have state in backend
+                'assetName': commit.asset.assetName
+            })
+
+        return Response({'commits': commits_list})
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+def get_commit(request, commit_id):
+    try:
+        commit = Commit.objects.get(id=commit_id)
+        
+        commit_data = {
+            'commitId': str(commit.id),
+            'pennKey': commit.author.pennkey if commit.author else None,
+            'versionNum': commit.version,
+            'notes': commit.note,
+            'commitDate': commit.timestamp.isoformat(),
+            'hasMaterials': commit.sublayers.exists(),
+            'state': [],  # This matches the frontend interface but we don't have state in backend
+            'assetName': commit.asset.assetName,
+            # Additional details for single commit view
+            'authorName': f"{commit.author.firstName} {commit.author.lastName}" if commit.author else None,
+            'authorEmail': commit.author.email if commit.author else None,
+            'assetId': str(commit.asset.id),
+            'sublayers': [
+                {
+                    'id': str(layer.id),
+                    'versionName': layer.versionName,
+                    'filepath': str(layer.filepath)
+                } for layer in commit.sublayers.all()
+            ]
+        }
+
+        return Response({'commit': commit_data})
+    except Commit.DoesNotExist:
+        return Response({'error': 'Commit not found'}, status=404)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+def get_users(request):
+    try:
+        authors = Author.objects.all().order_by('firstName', 'lastName')
+        users_list = []
+        
+        for author in authors:
+            users_list.append({
+                'pennId': author.pennkey,
+                'fullName': f"{author.firstName} {author.lastName}".strip() or author.pennkey,
+            })
+
+        return Response({'users': users_list})
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+def get_user(request, pennkey):
+    try:
+        author = Author.objects.get(pennkey=pennkey)
+        
+        user_data = {
+            'pennId': author.pennkey,
+            'fullName': f"{author.firstName} {author.lastName}".strip() or author.pennkey,
+        }
+
+        return Response({'user': user_data})
+    except Author.DoesNotExist:
+        return Response({'error': 'User not found'}, status=404)
+    except Exception as e:
         return Response({'error': str(e)}, status=500)
