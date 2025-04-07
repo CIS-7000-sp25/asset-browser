@@ -33,6 +33,7 @@ class Asset(models.Model):
     
 class AssetVersion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    s3id = models.CharField(max_length=1024)
     version = models.CharField(max_length=32)
     versionName = models.CharField(max_length=200)
     filepath = models.CharField(max_length=200)    

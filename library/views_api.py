@@ -1,6 +1,8 @@
+from datetime import datetime
+import uuid
 from django.http import JsonResponse
 from django.db.models import Q, Max, Min
-from .models import Asset, Author, Commit
+from .models import Asset, Author, Commit, AssetVersion, Keyword
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils.s3_utils import S3Manager 
@@ -101,7 +103,7 @@ def get_asset(request, asset_name):
         first_commit = asset.commits.order_by('timestamp').first()
 
         # Generate S3 URLs
-        s3Manager = S3Manager();
+        s3Manager = S3Manager()
         thumbnail_url = s3Manager.generate_presigned_url(asset.thumbnailKey) if asset.thumbnailKey else None
 
         # Format the response to match frontend's AssetWithDetails interface
@@ -128,20 +130,19 @@ def get_asset(request, asset_name):
         return Response({'error': str(e)}, status=500)
     
 @api_view(['POST'])
-def upload_S3_asset(request, asset_name):
+def post_asset(request, asset_name):
     try:
         # On the frontend, we should first check if metadata exists
         # Metadata upload is a separate POST 
-        s3 = S3Manager()
 
-        prefix = f"{asset_name}"
-        if len(s3.list_s3_files(prefix)) > 0:
-            return Response({'error': 'Asset already found!'}, status=400)
+        if Asset.objects.get(assetName=asset_name):
+            return Response({'error': 'Asset already exists'}, status=400)
 
         files = request.FILES.getlist('files')
         if not files:
-            return Response({'error': 'Asset already found!'}, status=400)
+            return Response({'error': 'Request missing files'}, status=404)
 
+        s3 = S3Manager()
         for file in files:
             s3.upload_file(file, f"{asset_name}/{file.name}")
 
@@ -149,6 +150,173 @@ def upload_S3_asset(request, asset_name):
     
     except Exception as e:
         return Response({'error': str(e)}, status=500)
+
+@api_view(['PUT'])
+def put_asset(request, asset_name):
+    try:
+        try:
+            Asset.objects.get(assetName=asset_name)
+        except Asset.DoesNotExist as e:
+            return Response({'error': 'Asset not found'}, status=404)
+            
+        files = request.FILES.getlist('files')
+        if not files:
+            return Response({'error': 'Request missing files'}, status=404)
+
+        s3 = S3Manager()
+        version_map = {}
+        for file in files:
+            key = f"{asset_name}/{file.name}"
+            response = s3.update_file(file, key)
+
+            # insert key to map, return this for our metadata
+            version_map.update({key, response["VersionId"]})
+
+        return Response({'message': 'Successfully updated', 'version_map': version_map}, status=200)
+
+    except Exception as e:
+        return Response({'error' : str(e)}, status=500)
+
+# Query:
+#   asset_name - A string as the name of the asset
+#   metadata - a JSON containing relevant metadata information
+#   metadata 
+#   - assetStructureVersion (string)
+#   - hasTexture (bool)    
+#   - keywords (list of keyword strings)
+#   - commit (Object contianing below)
+#     - author
+#     - timestamp
+#     - version
+#     - note
+
+@api_view(['POST'])
+def post_metadata(request, asset_name):
+    try:
+        # All untested!
+
+        if Asset.objects.get(assetName=asset_name):
+            return Response({'error': 'Asset exists!'}, status=400)
+
+        metadata = request.loads('utf-8')
+        asset = Asset(
+            id = uuid.uuid4(),
+            assetName = asset_name,
+            assetStructureVersion = metadata["assetStructureVersion"],
+            hasTexture = metadata["hasTexture"],
+            thumbnailKey = f"{asset_name}/thumbnail.png"
+        )
+
+        for keyword in metadata["keywords"]:
+            keyword, created = Keyword.objects.get_or_create(keyword=keyword.lower())
+            asset.keywordsList.add(keyword)
+
+        author = Author.objects.filter(pennkey=commit["author"]).first()
+
+        if author is None:
+            author = Author(pennkey=commit["author"], firstName="", lastName="")
+            author.save()
+            print(f"Author {commit['author']} not found, created new author.")
+
+        commit = metadata["Commit"]
+        commit = Commit(
+            author = author, 
+            timestamp = datetime.fromisoformat(commit["timestamp"]), 
+            version = commit["version"] , 
+            note = commit["note"], 
+            asset = asset)
+        commit.save()
+
+        versions = {
+            "Variant Set" : f"{asset_name}/{asset_name}.usda",
+            "LOD0" : f"{asset_name}/LODs/{asset_name}_LOD0.usda",
+            "LOD1" : f"{asset_name}/LODs/{asset_name}_LOD1.usda",
+            "LOD2" : f"{asset_name}/LODs/{asset_name}_LOD2.usda",
+        }
+        
+        for version, key in versions:
+            asset_version = AssetVersion(
+                id = uuid.uuid4(), 
+                versionName = version, 
+                filepath = key, 
+                asset = asset)
+            asset_version.save()
+
+        return Response({'message': 'Successfully created metadata'}, status=200)
+
+    except Exception as e:
+        return Response({'error' : str(e)}, status=500)
+
+# Query:
+#   asset_name - A string as the name of the asset
+#   new_version - A string as the new version as per our 7000 standards
+#   metadata - a JSON containing below
+#   - keywords (list of keyword strings)
+#   - commit (Object contianing below)
+#     - author
+#     - timestamp
+#     - version
+#     - note
+#   version_map - JSON map, refer to put_asset
+#   - [key, s3_id] : S3 key and S3 version ID for a file changed in S3
+#       -> keys can be: {asset_name}/{asset_name}.fbx for example I think
+
+@api_view(['PUT'])
+def put_metadata(request, asset_name, new_version):
+    try:
+        db_asset = None
+        try:
+            db_asset = Asset.objects.get(assetName=asset_name)
+        except Asset.DoesNotExist as e:
+            return Response({'error': 'Asset not found'}, status=404)
+
+        metadata = request.loads('utf-8')
+        version_map = metadata['version_map']
+
+        for key, s3_id in version_map:
+            versionName = None
+
+            if key[-4:] == ".usda":
+                versionName = "Variant Set"
+                tags = key[-9:-4]
+                if tags in {"_LOD0", "_LOD1", "_LOD2"}:
+                    versionName = tags[1:]
+
+            version_update = AssetVersion(
+                id = uuid.uuid4(),
+                filepath = key,
+                s3id = s3_id,
+                versionName = versionName,
+                version = new_version,
+                asset = db_asset
+            )
+            version_update.save()
+
+        for keyword in metadata["keywords"]:
+            keyword, created = Keyword.objects.get_or_create(keyword=keyword.lower())
+            db_asset.keywordsList.add(keyword)
+
+        # Add a new commit
+        commit = metadata["Commit"]
+        author = Author.objects.filter(pennkey=commit["author"]).first()
+
+        if author is None:
+            author = Author(pennkey=commit["author"], firstName="", lastName="")
+            author.save()
+            print(f"Author {commit['author']} not found, created new author.")
+
+        commit = Commit(
+            author = author, 
+            timestamp = datetime.fromisoformat(commit["timestamp"]), 
+            version = commit["version"] , 
+            note = commit["note"], 
+            asset = db_asset)
+        commit.save()
+
+        return Response({'message': 'Successfully updated metadata'}, status=200)
+    
+    except Exception as e:
+        return Response({'error' : str(e)}, status=500)
 
 @api_view(['POST'])
 def checkout_asset(request, asset_name):

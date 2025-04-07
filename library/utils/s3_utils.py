@@ -17,6 +17,9 @@ class S3Manager:
             Params={'Bucket': self.bucket, 'Key': key}, # relative path to bucket
             ExpiresIn=expires_in
         )
+    
+    def update_file(self, file, key):
+        return self.client.put_object(Body=file, Bucket=self.bucket, Key=key)
 
     def upload_file(self, file, key):
         self.client.upload_fileobj(file, self.bucket, key)
