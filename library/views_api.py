@@ -97,6 +97,18 @@ class CheckoutResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
     asset = serializers.DictField(child=serializers.CharField(), help_text="Details of the checked out asset")
 
+# Add these serializers at the top with the other serializers
+class DownloadQueryParamsSerializer(serializers.Serializer):
+    include_materials = serializers.BooleanField(
+        required=False, 
+        default=False,
+        help_text="Whether to include material files in the download"
+    )
+    version = serializers.CharField(
+        required=False, 
+        help_text="Specific version to download. If not provided, downloads the latest version"
+    )
+
 # Update the get_assets endpoint with documentation
 @extend_schema(
     summary="List all assets",
@@ -595,9 +607,70 @@ def checkout_asset(request, asset_name):
         print(f"Unexpected error in checkout_asset: {str(e)}")
         return Response({'error': str(e)}, status=500)
 
+@extend_schema(
+    summary="Download asset files",
+    description="""
+    Downloads the asset files as a zip archive. 
+    
+    Features:
+    - Downloads the asset's USD files and related resources
+    - Returns a zip file containing all requested files
+    
+    """,
+    parameters=[
+        OpenApiParameter(
+            name='asset_name',
+            location=OpenApiParameter.PATH,
+            description='The name of the asset to download',
+            required=True,
+            type=str
+        )
+    ],
+    responses={
+        200: inline_serializer(
+            name='DownloadResponse',
+            fields={
+                'content': serializers.FileField(help_text="ZIP file containing the asset files")
+            }
+        ),
+        404: ErrorResponseSerializer,
+        400: ErrorResponseSerializer,
+        500: ErrorResponseSerializer,
+    },
+    examples=[
+        OpenApiExample(
+            'Not Found Error',
+            description='Example when the asset does not exist',
+            value={
+                'error': 'Asset not found'
+            },
+            response_only=True,
+            status_codes=['404']
+        ),
+        OpenApiExample(
+            'Access Error',
+            description='Example when there is an error accessing the files',
+            value={
+                'error': 'Error accessing asset files from storage'
+            },
+            response_only=True,
+            status_codes=['500']
+        )
+    ],
+    methods=['GET']
+)
 @api_view(['GET'])
 def download_asset(request, asset_name):
-    """Stream a zipped version of the entire asset folder from S3."""
+    """
+    Download asset files as a zip archive.
+    
+    Args:
+        request: The HTTP request containing optional query parameters
+        asset_name: The name of the asset to download
+        
+    Returns:
+        StreamingResponse with zip file or error response
+    """
     try:
         # Make sure the asset exists in the DB first (helps 404 early)
         Asset.objects.get(assetName=asset_name)
