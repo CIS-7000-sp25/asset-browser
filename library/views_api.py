@@ -636,7 +636,7 @@ def download_asset(request, asset_name):
     - commitId: Unique identifier for the commit
     - pennKey: Author's Penn ID
     - versionNum: Version number of the commit
-    - notes: Commit message/notes
+    - note: Commit message/notes
     - commitDate: Timestamp of the commit
     - hasMaterials: Whether the commit includes material changes
     - state: List of state flags
@@ -656,8 +656,8 @@ def download_asset(request, asset_name):
                         'commitId': '123e4567-e89b-12d3-a456-426614174000',
                         'pennKey': 'willcai',
                         'versionNum': '1.0.0',
-                        'notes': 'Initial commit of cool_asset',
-                        'commitDate': '2025-04-07T09:50:00Z',
+                        'note': 'Initial commit of cool_asset',
+                        'commitDate': '2024-11-04T03:19:00+00:00',
                         'hasMaterials': True,
                         'state': ['approved'],
                         'assetName': 'cool_asset'
@@ -666,8 +666,8 @@ def download_asset(request, asset_name):
                         'commitId': '987fcdeb-51a2-43d7-9876-543210987654',
                         'pennKey': 'chuu',
                         'versionNum': '1.1.0',
-                        'notes': 'Updated materials',
-                        'commitDate': '2025-04-07T10:15:00Z',
+                        'note': 'Updated materials',
+                        'commitDate': '2024-11-04T03:19:00+00:00',
                         'hasMaterials': True,
                         'state': ['pending_review'],
                         'assetName': 'another_asset'
@@ -694,7 +694,7 @@ def get_commits(request):
                 'commitId': str(commit.id),
                 'pennKey': commit.author.pennkey if commit.author else None,
                 'versionNum': commit.version,
-                'notes': commit.note,
+                'note': commit.note,
                 'commitDate': commit.timestamp.isoformat(),
                 'hasMaterials': commit.sublayers.exists(),
                 'state': [],  # This matches the frontend interface but we don't have state in backend
@@ -739,8 +739,8 @@ def get_commits(request):
                     'commitId': '123e4567-e89b-12d3-a456-426614174000',
                     'pennKey': 'willcai',
                     'versionNum': '1.0.0',
-                    'notes': 'Initial commit of cool_asset',
-                    'commitDate': '2025-04-07T09:50:00Z',
+                    'note': 'Initial commit of cool_asset',
+                    'commitDate': '2024-11-04T03:19:00+00:00',
                     'hasMaterials': True,
                     'state': ['approved'],
                     'assetName': 'cool_asset',
@@ -775,14 +775,13 @@ def get_commit(request, commit_id):
             'commitId': str(commit.id),
             'pennKey': commit.author.pennkey if commit.author else None,
             'versionNum': commit.version,
-            'notes': commit.note,
+            'note': commit.note,
             'commitDate': commit.timestamp.isoformat(),
             'hasMaterials': commit.sublayers.exists(),
             'state': [],  # This matches the frontend interface but we don't have state in backend
             'assetName': commit.asset.assetName,
             # Additional details for single commit view
             'authorName': f"{commit.author.firstName} {commit.author.lastName}" if commit.author else None,
-            'authorEmail': commit.author.email if commit.author else None,
             'assetId': str(commit.asset.id),
             'sublayers': [
                 {
