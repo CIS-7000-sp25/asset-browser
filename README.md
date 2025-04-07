@@ -1,10 +1,10 @@
 ### Frontend Setup
 
-The frontend for this project is built with [Astro](https://astro.build/), and you’ll need Node.js and npm to run it locally.
+The frontend for this project is built with [Astro](https://astro.build/), and you'll need Node.js and npm to run it locally.
 
 1.	Install Node.js and npm
 
-    If you don’t have Node installed, you can get it via [Node.js official site](https://nodejs.org/en) or with Homebrew:
+    If you don't have Node installed, you can get it via [Node.js official site](https://nodejs.org/en) or with Homebrew:
 
     ```bash
     brew install node
@@ -33,7 +33,7 @@ The frontend for this project is built with [Astro](https://astro.build/), and y
 ### Backend Setup
 
 MySQL is local to your machine so you would have to set it up. (obviously there are ways of deploying, not sure how yet.)
-1. Install MySQL if you haven’t already.
+1. Install MySQL if you haven't already.
 2. Create a new database:
    ```sql
    CREATE DATABASE assets;
@@ -76,6 +76,17 @@ MySQL is local to your machine so you would have to set it up. (obviously there 
    mysql -u root -p assets < assets_backup.sql
    ```
 
+### API Documentation
+
+The backend API is documented using the OpenAPI specification (formerly known as Swagger). You can access the interactive API documentation by:
+
+
+   ```bash
+   # Start the Django server if not already running
+   python manage.py runserver
+   ```
+   Then visit: http://localhost:8000/api/docs/
+
 ### File Crawler Tool
   A script is also provided to create the database from scratch by crawling through the whole asset folder (i.e. Week 6 Assets).
 
@@ -117,7 +128,7 @@ MySQL is local to your machine so you would have to set it up. (obviously there 
 
 ### S3 Integration Setup
 
-To enable asset downloading from AWS S3, you’ll need to add a `.env` file at the root of the project containing your credentials:
+To enable asset downloading from AWS S3, you'll need to add a `.env` file at the root of the project containing your credentials:
 
 1. Create a `.env` file in the root directory (next to `manage.py`) with the following content:
 
