@@ -5,15 +5,25 @@ import CheckInStep1 from "./CheckInStep1";
 import CheckInStep2 from "./CheckInStep2";
 import CheckInStep3 from "./CheckInStep3";
 import { UserProvider } from "@/contexts/UserContext";
+import type { Metadata } from "@/lib/types";
 
 interface CheckInFlowProps {
   asset: AssetWithDetails;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onComplete: () => void;
+  onFilesChange: (newFiles: File[]) => void;
+  onMetadataChange: (newMetadata: Metadata) => void;
 }
 
-const CheckInFlow = ({ asset, open, onOpenChange, onComplete }: CheckInFlowProps) => {
+const CheckInFlow = ({
+  asset,
+  open,
+  onOpenChange,
+  onComplete,
+  onFilesChange,
+  onMetadataChange,
+}: CheckInFlowProps) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({
     materials: false,
@@ -37,8 +47,11 @@ const CheckInFlow = ({ asset, open, onOpenChange, onComplete }: CheckInFlowProps
   };
 
   const handleComplete = () => {
+    console.log("we have reached the flow state");
+    console.log(uploadedFiles);
+    onFilesChange([...uploadedFiles]);
     onComplete();
-    onOpenChange(false);
+    //onOpenChange(false);
   };
 
   return (
@@ -65,9 +78,13 @@ const CheckInFlow = ({ asset, open, onOpenChange, onComplete }: CheckInFlowProps
 
         {step === 3 && (
           <UserProvider>
-            <CheckInStep3 asset={asset} onComplete={handleComplete} />
+            <CheckInStep3
+              asset={asset}
+              onComplete={handleComplete}
+              onMetadataChange={onMetadataChange}
+            />
           </UserProvider>
-          )}
+        )}
       </DialogContent>
     </Dialog>
   );

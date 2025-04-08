@@ -11,6 +11,7 @@ import {
 } from "../../components/ui/select";
 import type { AssetWithDetails } from "../../services/api";
 import CheckInFlow from "./CheckInFlow";
+import type { Metadata } from "@/lib/types";
 
 interface AssetControlPanelProps {
   asset: AssetWithDetails;
@@ -20,6 +21,8 @@ interface AssetControlPanelProps {
   onCheckin: () => void;
   onDownload: () => void;
   onLaunchDCC: () => void;
+  onFilesChange: (newFiles: File[]) => void;
+  onMetadataChange: (newMetadata: Metadata) => void;
 }
 
 const AssetControlPanel = ({
@@ -30,12 +33,15 @@ const AssetControlPanel = ({
   onCheckin,
   onDownload,
   onLaunchDCC,
+  onFilesChange,
+  onMetadataChange,
 }: AssetControlPanelProps) => {
   const [checkInOpen, setCheckInOpen] = useState(false);
 
   const handleCheckInComplete = () => {
     onCheckin();
-    setCheckInOpen(false);
+    console.log("The checkin is done.");
+    //setCheckInOpen(false);
   };
 
   return (
@@ -58,13 +64,19 @@ const AssetControlPanel = ({
             <SelectValue placeholder={asset?.version} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={asset?.version ?? ""}>{asset?.version}</SelectItem>
+            <SelectItem value={asset?.version ?? ""}>
+              {asset?.version}
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button className="flex items-center gap-2" onClick={onCheckout} disabled={!canCheckout}>
+        <Button
+          className="flex items-center gap-2"
+          onClick={onCheckout}
+          disabled={!canCheckout}
+        >
           <LockOpen className="h-4 w-4" />
           Check Out
         </Button>
@@ -78,12 +90,20 @@ const AssetControlPanel = ({
           Check In
         </Button>
 
-        <Button variant="outline" className="flex items-center gap-2" onClick={onDownload}>
+        <Button
+          variant="outline"
+          className="flex items-center gap-2"
+          onClick={onDownload}
+        >
           <Download className="h-4 w-4" />
           Download Copy
         </Button>
 
-        <Button variant="outline" className="flex items-center gap-2" onClick={onLaunchDCC}>
+        <Button
+          variant="outline"
+          className="flex items-center gap-2"
+          onClick={onLaunchDCC}
+        >
           <PlayCircle className="h-4 w-4" />
           Launch DCC
         </Button>
@@ -94,6 +114,8 @@ const AssetControlPanel = ({
         open={checkInOpen}
         onOpenChange={setCheckInOpen}
         onComplete={handleCheckInComplete}
+        onFilesChange={onFilesChange}
+        onMetadataChange={onMetadataChange}
       />
     </div>
   );

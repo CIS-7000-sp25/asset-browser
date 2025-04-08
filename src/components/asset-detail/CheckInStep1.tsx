@@ -17,7 +17,11 @@ const checklistItems = [
   { id: "usdValidate", label: "USDValidate approved" },
 ];
 
-const CheckInStep1 = ({ checkedItems, setCheckedItems, onNext }: CheckInStep1Props) => {
+const CheckInStep1 = ({
+  checkedItems,
+  setCheckedItems,
+  onNext,
+}: CheckInStep1Props) => {
   const allChecked = Object.values(checkedItems).every(Boolean);
 
   const handleCheckChange = (id: string, checked: boolean) => {
@@ -37,7 +41,9 @@ const CheckInStep1 = ({ checkedItems, setCheckedItems, onNext }: CheckInStep1Pro
             <Checkbox
               id={item.id}
               checked={checkedItems[item.id]}
-              onCheckedChange={(checked) => handleCheckChange(item.id, checked as boolean)}
+              onCheckedChange={(checked) =>
+                handleCheckChange(item.id, checked as boolean)
+              }
             />
             <label
               htmlFor={item.id}
@@ -50,7 +56,7 @@ const CheckInStep1 = ({ checkedItems, setCheckedItems, onNext }: CheckInStep1Pro
       </div>
 
       <div className="flex justify-end mt-6">
-        <Button onClick={onNext} disabled={!allChecked}>
+        <Button onClick={onNext} disabled={!allChecked && false}>
           Proceed with uploading
         </Button>
       </div>

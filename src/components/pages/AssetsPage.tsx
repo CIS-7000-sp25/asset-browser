@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import type { AssetWithDetails } from "../../services/api";
-import { api } from "../../services/api";
 import AssetGrid from "../AssetGrid";
 import SearchBar from "../SearchBar";
+import { actions } from "astro:actions";
+import { toast } from "@/hooks/use-toast";
 
 const AssetsPage = () => {
   const [assets, setAssets] = useState<AssetWithDetails[]>([]);
@@ -17,29 +18,39 @@ const AssetsPage = () => {
 
   const fetchAssets = async () => {
     setIsLoading(true);
-    try {
-      console.log("Fetching assets with params:", {
-        searchTerm,
-        filterAuthor,
-        showCheckedInOnly,
-        sortBy,
+
+    console.log("Fetching assets with params:", {
+      searchTerm,
+      filterAuthor,
+      showCheckedInOnly,
+      sortBy,
+    });
+
+    const { data, error } = await actions.getAssets({
+      search: searchTerm,
+      author: filterAuthor || undefined,
+      checkedInOnly: showCheckedInOnly,
+      sortBy,
+    });
+
+    if (error) {
+      console.error("[ERROR] API: Failed to fetch assets:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch assets. Please try again.",
+        variant: "destructive",
       });
-      const response = await api.getAssets({
-        search: searchTerm,
-        author: filterAuthor || undefined, // Convert null to undefined for API compatibility
-        checkedInOnly: showCheckedInOnly,
-        sortBy,
-      });
-      console.log("Fetched assets:", response.assets);
-      console.log("Assets length:", response.assets.length);
-      console.log("Assets first item:", response.assets[0]);
-      setAssets(response.assets);
-    } catch (error) {
-      console.error("Error fetching assets:", error);
-    } finally {
-      setIsLoading(false);
-      console.log("Is loading:", isLoading);
+      setAssets([]);
+    } else {
+      const { assets } = data;
+      console.log("Fetched assets:", assets);
+      console.log("Assets length:", assets.length);
+      console.log("Assets first item:", assets[0]);
+      setAssets(assets);
     }
+
+    setIsLoading(false);
+    console.log("Is loading:", isLoading);
   };
 
   useEffect(() => {
@@ -74,7 +85,9 @@ const AssetsPage = () => {
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2 text-left">Asset Browser</h1>
-        <p className="text-muted-foreground text-left">Browse and search for assets</p>
+        <p className="text-muted-foreground text-left">
+          Browse and search for assets
+        </p>
       </div>
 
       <SearchBar

@@ -286,7 +286,7 @@ def put_metadata(request, asset_name, new_version):
             return Response({'error': 'Asset not found'}, status=404)
 
         metadata = request.data
-        version_map = metadata['version_map'] #hfuwafuwufaiufh
+        version_map = metadata['version_map'] # I don't think this is right
 
         for key, s3_id in version_map:
             versionName = None

@@ -1,4 +1,6 @@
 import { toast } from "@/components/ui/use-toast";
+import type { Metadata, VersionMap } from "@/lib/types";
+import { Value } from "@radix-ui/react-select";
 
 // Types based on schemas
 export interface Asset {
@@ -61,14 +63,22 @@ const mockCommits: Commit[] = Array.from({ length: 50 }, (_, i) => ({
 }));
 
 const mockAssets: Asset[] = Array.from({ length: 20 }, (_, i) => {
-  const assetCommits = mockCommits.filter((c) => c.notes.includes(`asset ${i + 1}`));
+  const assetCommits = mockCommits.filter((c) =>
+    c.notes.includes(`asset ${i + 1}`)
+  );
   const latestCommit = assetCommits.length > 0 ? assetCommits[0] : null;
 
   return {
     assetName: `mockAsset${i + 1}`,
-    keywords: ["3D", "Model", "Character", "Environment", "Prop", "Texture", "Animation"].filter(
-      (_, ki) => ki % ((i % 3) + 2) === 0
-    ),
+    keywords: [
+      "3D",
+      "Model",
+      "Character",
+      "Environment",
+      "Prop",
+      "Texture",
+      "Animation",
+    ].filter((_, ki) => ki % ((i % 3) + 2) === 0),
     checkedOut: i % 5 === 0,
     latestCommitId: latestCommit?.commitId || "0",
     lastApprovedId: latestCommit?.commitId || "0",
@@ -119,161 +129,55 @@ const getAssetWithDetails = (asset: Asset): AssetWithDetails => {
 };
 
 // Function to simulate API loading delay
-const simulateApiDelay = async (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms));
+const simulateApiDelay = async (ms = 100) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 // API functions that would connect to Express backend
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
 export const api = {
-  // Get all assets with optional filtering
-  async getAssets(params?: {
-    search?: string;
-    author?: string;
-    checkedInOnly?: boolean;
-    sortBy?: string;
-  }) {
-    try {
-      console.log("[DEBUG] API: getAssets called with params:", params);
-
-      // Build query string from params
-      const queryParams = new URLSearchParams();
-      if (params?.search) queryParams.append("search", params.search);
-      if (params?.author) queryParams.append("author", params.author);
-      if (params?.checkedInOnly) queryParams.append("checkedInOnly", "true");
-      if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
-
-      const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
-
-      // Always make API call
-      console.log("[DEBUG] API: Making API call to:", `${API_URL}/assets${queryString}`);
-      const response = await fetch(`${API_URL}/assets${queryString}`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch assets: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      console.log("[DEBUG] API: Received response:", data);
-      return data;
-
-    } catch (error) {
-      console.error("[ERROR] API: Failed to fetch assets:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch assets. Please try again.",
-        variant: "destructive",
-      });
-      return { assets: [] };
-    }
-  },
-
-  // Get a single asset by name
-  async getAsset(assetName: string) {
-    try {
-      console.log("[DEBUG] API: assetName type:", typeof assetName);
-
-      // Always make API call
-      const response = await fetch(`${API_URL}/assets/${assetName}`);
-      if (!response.ok) throw new Error("Failed to fetch asset details");
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error(`Failed to fetch asset ${assetName}:`, error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch asset details. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  },
-
-  // Check out an asset
-  async checkoutAsset(assetName: string, pennId: string) {
-    try {
-      const response = await fetch(`${API_URL}/assets/${assetName}/checkout/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ pennkey: pennId }),  // Note: backend expects 'pennkey' not 'pennId'
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to check out asset');
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error(`Failed to check out asset ${assetName}:`, error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to check out asset.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  },
-
   // Check in an asset
-  async checkinAsset(assetName: string, pennId: string, files : File[], metadata : any) {
+  async checkinAsset(
+    assetName: string,
+    pennId: string,
+    files: File[],
+    metadata: Metadata
+  ) {
     try {
-      // TO DO: replace files with something valid, files : File[]
-      const files : File[] = [];
       const formData = new FormData();
 
       for (const file in files) {
-        formData.append('files', file);
+        formData.append("files", file);
       }
 
       // S3 update, returns Version IDs
-      const response_version_ids = await fetch(`${API_URL}/assets/${assetName}/`, {
-        method: 'POST',
-        body: formData
-      });
+      const response_version_ids = await fetch(
+        `${API_URL}/assets/${assetName}/`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (!response_version_ids.ok) {
         const error = await response_version_ids.json();
-        throw new Error(error.error || 'Failed to check in asset');
+        throw new Error(error.error || "Failed to check in asset");
       }
-      
+
       const version_data = await response_version_ids.json();
-      const version_map = version_data.version_map;
-
-      const metadata : any = {};
-      /*
-      {
-        author
-        date
-        version
-        etc
-        commit : {
-        }
-      }
-      */
-
-      metadata['version_map'] = version_map;
+      const version_map = version_data.version_map as VersionMap;
+      console.log("version_map:", version_map);
+      metadata.versionMap = version_map;
 
       // Metadata update, adds new AssetVersions based on Commit
       const response = await fetch(`${API_URL}/metadata/${assetName}/`, {
-        method: 'POST',
-        body: JSON.stringify(metadata)
+        method: "POST",
+        body: JSON.stringify(metadata),
       });
-
-      // const response = await fetch(`${API_URL}/assets/${assetName}/checkin/`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ pennkey: pennId }),  // Note: backend expects 'pennkey' not 'pennId'
-      // });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to check in asset');
+        throw new Error(error.error || "Failed to check in asset");
       }
 
       const data = await response.json();
@@ -282,7 +186,8 @@ export const api = {
       console.error(`Failed to check in asset ${assetName}:`, error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to check in asset.",
+        description:
+          error instanceof Error ? error.message : "Failed to check in asset.",
         variant: "destructive",
       });
       throw error;
@@ -294,7 +199,10 @@ export const api = {
     console.log("[DEBUG] api.downloadAsset called with assetName:", assetName);
     try {
       // Call API in both development and production
-      console.log("[DEBUG] Making API call to:", `${API_URL}/assets/${assetName}/download`);
+      console.log(
+        "[DEBUG] Making API call to:",
+        `${API_URL}/assets/${assetName}/download`
+      );
       const response = await fetch(`${API_URL}/assets/${assetName}/download`);
       console.log("[DEBUG] API response status:", response.status);
       if (!response.ok) throw new Error("Failed to download asset");

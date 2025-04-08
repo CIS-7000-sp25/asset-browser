@@ -10,6 +10,8 @@ import AssetDetailSkeleton from "../asset-detail/AssetDetailSkeleton";
 import AssetMetadata from "../asset-detail/AssetMetadata";
 import AssetNotFound from "../asset-detail/AssetNotFound";
 import AssetPreview from "../asset-detail/AssetPreview";
+import { type Metadata } from "@/lib/types";
+import { actions } from "astro:actions";
 
 interface AssetDetailPageProps {
   assetName: string;
@@ -17,6 +19,10 @@ interface AssetDetailPageProps {
 
 const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
   const [asset, setAsset] = useState<AssetWithDetails | null>(null);
+  const [userFiles, setUserFiles] = useState<File[]>([]);
+  const [metadata, setMetadata] = useState<Metadata>({
+    hi: "empty",
+  } as unknown as Metadata);
   const [isLoading, setIsLoading] = useState(true);
 
   // Mock user for demonstration purposes
@@ -35,6 +41,16 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
     return user ? user.fullName : null;
   };
 
+  const handleUserFilesChange = (newFiles: File[]) => {
+    console.log("User files changed:", newFiles);
+    setUserFiles(newFiles);
+  };
+
+  const handleMetadataChange = (newMetadata: Metadata) => {
+    console.log("Metadata changed:", newMetadata);
+    setMetadata(metadata);
+  };
+
   const fetchAsset = async () => {
     if (!assetName) {
       console.error("Cannot fetch asset: No assetName provided");
@@ -44,12 +60,10 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
 
     console.log("Fetching asset with name:", assetName);
     setIsLoading(true);
-    try {
-      const response = await api.getAsset(assetName);
-      console.log("API response:", response);
-      setAsset(response.asset);
-      setIsLoading(false);
-    } catch (error) {
+
+    const { data, error } = await actions.getAsset({ assetName });
+
+    if (error) {
       console.error("Error fetching asset:", error);
       setIsLoading(false);
       toast({
@@ -57,6 +71,10 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
         description: "Failed to load asset details. Please try again.",
         variant: "destructive",
       });
+    } else {
+      console.log("API response:", data);
+      setAsset(data.asset);
+      setIsLoading(false);
     }
   };
 
@@ -75,9 +93,21 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
   const handleCheckout = async () => {
     if (!assetName || !user || !asset) return;
 
-    try {
-      const response = await api.checkoutAsset(assetName, user.pennId);
-      const { asset: updatedAsset, downloadUrl } = response;
+    const { data, error } = await actions.checkoutAsset({
+      assetName,
+      pennKey: user.pennId,
+    });
+
+    if (error) {
+      console.error("Error checking out asset:", error.message);
+      toast({
+        title: "Checkout Error",
+        description: `Failed to check out asset "${assetName}". Please try again.`,
+        variant: "destructive",
+      });
+    } else {
+      const { asset: updatedAsset, downloadUrl } = data;
+
       setAsset(updatedAsset);
       toast({
         title: "Asset Checked Out",
@@ -122,21 +152,40 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
           });
         }
       }
-    } catch (error) {
-      console.error("Error checking out asset:", error);
-      toast({
-        title: "Checkout Error",
-        description: "Failed to check out the asset. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
   const handleCheckIn = async () => {
-    if (!assetName || !user || !asset) return;
+    console.log("It's time to check in.");
+
+    if (
+      !assetName ||
+      !user ||
+      !asset ||
+      !metadata ||
+      userFiles.length === 0 ||
+      !metadata
+    )
+      return;
+
+    console.log("good job on making it this far");
+    console.log(`Metadata ${metadata}`);
+    console.log(`Files ${userFiles}`);
+
+    const {data, error} = await actions.checkinAsset({
+      assetName,
+      pennKey: user.pennId,
+      files: userFiles,
+      metadata
+    });
 
     try {
-      const { asset: updatedAsset } = await api.checkinAsset(assetName, user.pennId);
+      const { asset: updatedAsset } = await api.checkinAsset(
+        assetName,
+        user.pennId,
+        userFiles,
+        metadata
+      );
       setAsset(updatedAsset);
       toast({
         title: "Asset Checked In",
@@ -200,12 +249,19 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
           <AssetControlPanel
             asset={asset}
             canCheckout={!asset.isCheckedOut && !!user}
-            canCheckin={asset.isCheckedOut && !!user && asset.checkedOutBy === user.pennId}
+            canCheckin={
+              asset.isCheckedOut && !!user && asset.checkedOutBy === user.pennId
+            }
             onCheckout={handleCheckout}
             onCheckin={handleCheckIn}
             onDownload={handleDownload}
+            onFilesChange={handleUserFilesChange}
+            onMetadataChange={handleMetadataChange}
             onLaunchDCC={() =>
-              window.open(`/asset-preview?name=${encodeURIComponent(asset.name)}`, "_blank")
+              window.open(
+                `/asset-preview?name=${encodeURIComponent(asset.name)}`,
+                "_blank"
+              )
             }
           />
 

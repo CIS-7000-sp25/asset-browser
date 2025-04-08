@@ -2,7 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -13,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useUser } from "@/contexts/UserContext";
+import type { Commit, Metadata } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { AssetWithDetails } from "@/services/api";
 import { format } from "date-fns";
@@ -22,9 +27,14 @@ import React, { useState } from "react";
 interface CheckInStep3Props {
   asset: AssetWithDetails;
   onComplete: () => void;
+  onMetadataChange: (newMetadata: Metadata) => void;
 }
 
-const CheckInStep3 = ({ asset, onComplete }: CheckInStep3Props) => {
+const CheckInStep3 = ({
+  asset,
+  onComplete,
+  onMetadataChange,
+}: CheckInStep3Props) => {
   const { user } = useUser();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [version, setVersion] = useState<string>("");
@@ -43,7 +53,9 @@ const CheckInStep3 = ({ asset, onComplete }: CheckInStep3Props) => {
     return [
       `${major + 1}.00.00`, // Major update
       `${major}.${(minor + 1).toString().padStart(2, "0")}.00`, // Minor update
-      `${major}.${minor.toString().padStart(2, "0")}.${(patch + 1).toString().padStart(2, "0")}`, // Patch update
+      `${major}.${minor.toString().padStart(2, "0")}.${(patch + 1)
+        .toString()
+        .padStart(2, "0")}`, // Patch update
     ];
   };
 
@@ -55,6 +67,33 @@ const CheckInStep3 = ({ asset, onComplete }: CheckInStep3Props) => {
       setVersion(versionOptions[0]);
     }
   }, [versionOptions, version]);
+
+  const onSubmit = () => {
+    if (!user || !date) return;
+
+    console.log("we have stuff to submit");
+
+    const commit: Commit = {
+      author: user.pennId,
+      version: version,
+      timestamp: date.toString(),
+      note: description,
+    };
+
+    const metadata: Metadata = {
+      assetName: asset.name,
+      assetStructureVersion: "03.00.00",
+      keywords: keywords.split(","),
+      hasTexture: materials === "Yes",
+      commit: commit,
+      versionMap: {},
+    };
+
+    console.log(metadata);
+
+    onMetadataChange(metadata);
+    onComplete();
+  };
 
   const isFormValid = () => {
     return (
@@ -83,7 +122,12 @@ const CheckInStep3 = ({ asset, onComplete }: CheckInStep3Props) => {
             <label htmlFor="author" className="text-sm font-medium">
               Author *
             </label>
-            <Input id="author" value={user?.name || ""} readOnly className="bg-muted" />
+            <Input
+              id="author"
+              value={user?.name || ""}
+              readOnly
+              className="bg-muted"
+            />
           </div>
 
           {/* Date Field */}
@@ -105,7 +149,12 @@ const CheckInStep3 = ({ asset, onComplete }: CheckInStep3Props) => {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  initialFocus
+                />
               </PopoverContent>
             </Popover>
           </div>
@@ -176,7 +225,7 @@ const CheckInStep3 = ({ asset, onComplete }: CheckInStep3Props) => {
       </ScrollArea>
 
       <div className="flex justify-end pt-4 mt-auto border-t">
-        <Button onClick={onComplete} disabled={!isFormValid()}>
+        <Button onClick={onSubmit} disabled={!isFormValid()}>
           Submit
         </Button>
       </div>
