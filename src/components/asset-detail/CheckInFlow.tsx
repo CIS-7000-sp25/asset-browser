@@ -4,6 +4,7 @@ import type { AssetWithDetails } from "../../services/api";
 import CheckInStep1 from "./CheckInStep1";
 import CheckInStep2 from "./CheckInStep2";
 import CheckInStep3 from "./CheckInStep3";
+import { UserProvider } from "@/contexts/UserContext";
 
 interface CheckInFlowProps {
   asset: AssetWithDetails;
@@ -62,7 +63,11 @@ const CheckInFlow = ({ asset, open, onOpenChange, onComplete }: CheckInFlowProps
           />
         )}
 
-        {step === 3 && <CheckInStep3 asset={asset} onComplete={handleComplete} />}
+        {step === 3 && (
+          <UserProvider>
+            <CheckInStep3 asset={asset} onComplete={handleComplete} />
+          </UserProvider>
+          )}
       </DialogContent>
     </Dialog>
   );

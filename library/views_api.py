@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 from django.http import StreamingHttpResponse
-from django.db.models import Q
+from django.db.models import Q, Max, Min
 from .models import Asset, Author, Commit, AssetVersion, Keyword
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -75,7 +75,7 @@ def get_assets(request):
 
         # Convert to frontend format
         assets_list = []
-        s3Manager = S3Manager();
+        s3Manager = S3Manager()
         for asset in assets:
             try:
                 # Get latest and first commits
@@ -285,8 +285,8 @@ def put_metadata(request, asset_name, new_version):
         except Asset.DoesNotExist as e:
             return Response({'error': 'Asset not found'}, status=404)
 
-        metadata = request.loads('utf-8')
-        version_map = metadata['version_map']
+        metadata = request.data
+        version_map = metadata['version_map'] #hfuwafuwufaiufh
 
         for key, s3_id in version_map:
             versionName = None
@@ -312,7 +312,7 @@ def put_metadata(request, asset_name, new_version):
             db_asset.keywordsList.add(keyword)
 
         # Add a new commit
-        commit = metadata["Commit"]
+        commit = metadata["commit"]
         author = Author.objects.filter(pennkey=commit["author"]).first()
 
         if author is None:

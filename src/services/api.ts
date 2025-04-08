@@ -219,15 +219,57 @@ export const api = {
   },
 
   // Check in an asset
-  async checkinAsset(assetName: string, pennId: string) {
+  async checkinAsset(assetName: string, pennId: string, files : File[], metadata : any) {
     try {
-      const response = await fetch(`${API_URL}/assets/${assetName}/checkin/`, {
+      // TO DO: replace files with something valid, files : File[]
+      const files : File[] = [];
+      const formData = new FormData();
+
+      for (const file in files) {
+        formData.append('files', file);
+      }
+
+      // S3 update, returns Version IDs
+      const response_version_ids = await fetch(`${API_URL}/assets/${assetName}/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ pennkey: pennId }),  // Note: backend expects 'pennkey' not 'pennId'
+        body: formData
       });
+
+      if (!response_version_ids.ok) {
+        const error = await response_version_ids.json();
+        throw new Error(error.error || 'Failed to check in asset');
+      }
+      
+      const version_data = await response_version_ids.json();
+      const version_map = version_data.version_map;
+
+      const metadata : any = {};
+      /*
+      {
+        author
+        date
+        version
+        etc
+        commit : {
+        }
+      }
+      */
+
+      metadata['version_map'] = version_map;
+
+      // Metadata update, adds new AssetVersions based on Commit
+      const response = await fetch(`${API_URL}/metadata/${assetName}/`, {
+        method: 'POST',
+        body: JSON.stringify(metadata)
+      });
+
+      // const response = await fetch(`${API_URL}/assets/${assetName}/checkin/`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({ pennkey: pennId }),  // Note: backend expects 'pennkey' not 'pennId'
+      // });
 
       if (!response.ok) {
         const error = await response.json();
