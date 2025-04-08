@@ -103,7 +103,7 @@ DATABASES = {
     # }
 }
 
-# DATABASES['default']['ENGINE'] = 'mysql.connector.django'
+DATABASES['default']['ENGINE'] = 'mysql.connector.django'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
