@@ -169,35 +169,31 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
       return;
 
     console.log("good job on making it this far");
-    console.log(`Metadata ${metadata}`);
-    console.log(`Files ${userFiles}`);
+    console.log(`Metadata: ${metadata}`);
+    console.log(`Files: ${userFiles}`);
+    console.log("Asset name:", assetName);
+    console.log("User:", user);
 
-    const {data, error} = await actions.checkinAsset({
+    const { data, error } = await actions.checkinAsset({
       assetName,
       pennKey: user.pennId,
       files: userFiles,
-      metadata
+      metadata,
     });
 
-    try {
-      const { asset: updatedAsset } = await api.checkinAsset(
-        assetName,
-        user.pennId,
-        userFiles,
-        metadata
-      );
-      setAsset(updatedAsset);
+    if (error) {
+      console.error("Error checking in asset:", error.message);
+      toast({
+        title: "Check-in Error",
+        description: `Failed to check in the asset. Please try again. Error message: ${error.message}`,
+        variant: "destructive",
+      });
+    } else {
+      setAsset(data.asset);
       toast({
         title: "Asset Checked In",
         description: `You have successfully checked in ${asset.name}.`,
         variant: "default",
-      });
-    } catch (error) {
-      console.error("Error checking in asset:", error);
-      toast({
-        title: "Check-in Error",
-        description: "Failed to check in the asset. Please try again.",
-        variant: "destructive",
       });
     }
   };
