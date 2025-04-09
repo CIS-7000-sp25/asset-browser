@@ -1,25 +1,15 @@
 import react from "@astrojs/react";
-import tailwind from "@astrojs/tailwind";
 import vercel from "@astrojs/vercel";
-
 import { defineConfig } from "astro/config";
+
+import tailwindcss from "@tailwindcss/vite";
 
 // https://astro.build/config
 export default defineConfig({
   output: "server",
   adapter: vercel(),
-  integrations: [
-    react(),
-    tailwind({
-      // Use existing CSS files
-      applyBaseStyles: false,
-    }),
-  ],
-  // Enable verbose logging for debugging
+  integrations: [react()],
   vite: {
-    logLevel: "info",
-    define: {
-      "process.env": process.env,
-    },
+    plugins: [tailwindcss()],
   },
 });

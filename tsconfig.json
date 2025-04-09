@@ -13,7 +13,6 @@
       "@/*": ["src/*"]
     },
     "jsx": "react-jsx",
-    "jsxImportSource": "react",
-    "module": "esnext"
+    "jsxImportSource": "react"
   }
 }
