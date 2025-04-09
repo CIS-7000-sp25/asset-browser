@@ -31,7 +31,7 @@ const AssetCard = ({ asset }: AssetCardProps) => {
         )}
         onClick={handleCardClick}
       >
-        <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
+        <div className="relative aspect-4/3 overflow-hidden bg-secondary">
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -47,7 +47,7 @@ const AssetCard = ({ asset }: AssetCardProps) => {
             onLoad={() => setImageLoaded(true)}
           />
           {asset.isCheckedOut && (
-            <div className="absolute top-2 right-2 bg-secondary/80 backdrop-blur-sm text-foreground px-2 py-1 rounded-md text-xs flex items-center">
+            <div className="absolute top-2 right-2 bg-secondary/80 backdrop-blur-xs text-foreground px-2 py-1 rounded-md text-xs flex items-center">
               <Lock className="h-3 w-3 mr-1" />
               Checked Out
             </div>
