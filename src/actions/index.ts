@@ -2,7 +2,7 @@ import { MetadataSchema, type VersionMap } from "@/lib/types";
 import { ActionError, defineAction } from "astro:actions";
 import { z } from "astro:schema";
 
-const API_URL = "https://usd-asset-library.up.railway.app/api";
+// const API_URL = "https://usd-asset-library.up.railway.app/api";
 
 export const server = {
   getAssets: defineAction({
@@ -40,7 +40,7 @@ export const server = {
       }
 
       const data = await response.json();
-      console.log("[DEBUG] API: Received response:", data);
+      //console.log("[DEBUG] API: Received response:", data);
       return data;
     },
   }),
@@ -60,6 +60,36 @@ export const server = {
 
       const data = await response.json();
       return data;
+    },
+  }),
+
+  createAsset: defineAction({
+    accept: "form",
+    input: z.object({ 
+      assetName: z.string(),
+      version: z.string(),
+      file: z.instanceof(File)
+    }),
+    handler: async ({ assetName, file })  => {
+      console.log("[DEBUG] API: assetName type:", typeof assetName);
+      console.log("[DEBUG] API: API URL:", API_URL);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`${API_URL}/assets/${assetName}`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new ActionError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: response.statusText
+            ? `Failed to check in asset. Error message: ${response.statusText}`
+            : "Failed to check in asset",
+        });
+      }
     },
   }),
 

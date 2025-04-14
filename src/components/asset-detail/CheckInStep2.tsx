@@ -70,6 +70,7 @@ const CheckInStep2 = ({
 
       const isValid =
         fileName === `${assetName}.usda` ||
+        fileName.endsWith(".zip") || 
         (fileName.startsWith(`${assetName}_`) && fileName.endsWith(".usda")) ||
         fileName === "thumbnail.png";
 
