@@ -2,8 +2,7 @@ import { MetadataSchema, type VersionMap } from "@/lib/types";
 import { ActionError, defineAction } from "astro:actions";
 import { z } from "astro:schema";
 
-// const API_URL = "https://usd-asset-library.up.railway.app/api";
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = import.meta.env.DEV ? "http://127.0.0.1:8000" : "https://usd-asset-library.up.railway.app/api";
 
 export const server = {
   getAssets: defineAction({
