@@ -14,6 +14,8 @@ import AssetDetailSkeleton from "../asset-detail/AssetDetailSkeleton";
 import AssetMetadata from "../asset-detail/AssetMetadata";
 import AssetPreview from "../asset-detail/AssetPreview";
 
+import { server } from "@/actions/index";
+
 interface AssetDetailPageProps {
   assetName: string;
 }
@@ -292,15 +294,32 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
             onDownload={handleDownload}
             onFilesChange={handleUserFilesChange}
             onMetadataChange={handleMetadataChange}
-            onLaunchDCC={() => {
-              toast({
-                title: "Not implemented",
-                description: "TODO",
-                variant: "destructive",
-              });
-
-              window.open(`/asset-preview?name=${encodeURIComponent(asset.name)}`, "_blank");
-            }}
+            onLaunchDCC={
+              async () => {
+              try {
+                const result = await server.launchDCC({ assetName: asset.name });
+                if (result.error) {
+                  toast({
+                    title: "Error launching Houdini",
+                    description: "Error launching Houdini",
+                    variant: "destructive",
+                  });
+                } else {
+                  toast({
+                    title: "Houdini launched!",
+                    description: `Working on ${asset.name}`,
+                  });
+                }
+              } catch (error) {
+                console.error("Error launching Houdini:", error);
+                toast({
+                  title: "Failed to Launch Houdini",
+                  description: "There was an error trying to launch Houdini.",
+                  variant: "destructive",
+                });
+              }
+            }
+          }
           />
           <Separator />
 

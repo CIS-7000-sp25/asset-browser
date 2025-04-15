@@ -3,7 +3,12 @@ import { ActionError, defineAction } from "astro:actions";
 import { z } from "astro:schema";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { writeFile } from "fs/promises";
+import os from "os";
+import path from "path";
+import { randomUUID } from "crypto";
 const execAsync = promisify(exec);
+
 
 const API_URL = "https://usd-asset-library.up.railway.app/api";
 
@@ -179,29 +184,74 @@ export const server = {
     input: z.object({
       assetName: z.string(),
     }),
+    // handler: async ({ assetName }) => {
+    //   console.log("[DEBUG] API: launchDCC called for", assetName);
+  
+    //   // Step 1: Download the asset
+    //   const downloadUrl = `${API_URL}/assets/${assetName}/download`;
+    //   const response = await fetch(downloadUrl);
+  
+    //   if (!response.ok) {
+    //     console.error("[DEBUG] Failed to fetch asset. Status:", response.status);
+    //     throw new ActionError({
+    //       code: "INTERNAL_SERVER_ERROR",
+    //       message: "Failed to fetch asset for Houdini",
+    //     });
+    //   }
+  
+    //   const buffer = Buffer.from(await response.arrayBuffer());
+  
+    //   // Step 2: Write it to a temporary .hip file
+    //   const tmpDir = os.tmpdir(); // OS temp directory
+    //   const tmpFilename = `${assetName}-${randomUUID()}.hiplc`;
+    //   const tmpPath = path.join(tmpDir, tmpFilename);
+    //   await writeFile(tmpPath, buffer);
+    //   console.log("[DEBUG] Wrote Houdini asset to:", tmpPath);
+  
+    //   // Step 3: Launch Houdini with that file
+    //   const houdiniExe = "C:\\Program Files\\Side Effects Software\\Houdini 20.5.445\\bin\\houdini.exe";
+    //   const command = `${houdiniExe} "${tmpPath}"`;
+  
+    //   try {
+    //     await execAsync(command);
+    //     console.log("[DEBUG] Houdini launched with asset.");
+    //   } catch (error) {
+    //     console.error("Failed to launch Houdini:", error);
+    //     throw new ActionError({
+    //       code: "INTERNAL_SERVER_ERROR",
+    //       message: "Could not launch Houdini",
+    //     });
+    //   }
+    // },
     handler: async ({ assetName }) => {
-      console.log("[DEBUG] API: launchDCC called for", assetName);
-  
-      // full path to the asset to open in Houdini
-      const assetPath = C:\\path\\to\\asset\\${assetName}.hiplc;
-  
-      // path to the Houdini executable
-      const houdiniPath = "C:\\Program Files\\Side Effects Software\\Houdini 20.0.653\\bin\\houdini.exe";
-  
-      // command to run
-      const command = ${houdiniPath} "${assetPath}";
-  
-      try {
-        await execAsync(command);
-        console.log("Houdini launched successfully.");
-      } catch (error) {
-        console.error("Error launching Houdini:", error);
-        throw new ActionError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to launch Houdini",
-        });
-      }
+      console.log("[DEBUG] API: launchDCC called");
+    
+      const houdiniPath = "C:\\Program Files\\Side Effects Software\\Houdini 20.5.445\\bin\\houdini.exe";
+    
+      exec(houdiniPath, (err, stdout, stderr) => {
+        if (err) {
+          console.error("[ERROR] Failed to launch Houdini:", err);
+          throw new ActionError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to launch Houdini.",
+          });
+        }
+        console.log("[INFO] Houdini launched successfully.", stdout);
+      });
     },
+    // handler: async () => {
+    //   const child_process = await import("child_process");
+    //   child_process.exec('"C:\\Program Files\\Side Effects Software\\Houdini 20.5.445\\bin\\houdini.exe"', (err, stdout, stderr) => {
+    //     if (err) {
+    //       console.error("Error launching Houdini:", err);
+    //     } else {
+    //       console.log("Houdini launched successfully!");
+    //     }
+    //   });
+    
+    //   return { success: true };
+    // }
+    
   }),
 
   getAuthors: defineAction({
