@@ -1,6 +1,9 @@
 import { MetadataSchema, type VersionMap } from "@/lib/types";
 import { ActionError, defineAction } from "astro:actions";
 import { z } from "astro:schema";
+import { exec } from "child_process";
+import { promisify } from "util";
+const execAsync = promisify(exec);
 
 const API_URL = "https://usd-asset-library.up.railway.app/api";
 
@@ -177,13 +180,27 @@ export const server = {
       assetName: z.string(),
     }),
     handler: async ({ assetName }) => {
-      console.log("[DEBUG] API: launchDCC called");
-
-      // TODO
-      throw new ActionError({
-        code: "FORBIDDEN",
-        message: "To do",
-      });
+      console.log("[DEBUG] API: launchDCC called for", assetName);
+  
+      // full path to the asset to open in Houdini
+      const assetPath = C:\\path\\to\\asset\\${assetName}.hiplc;
+  
+      // path to the Houdini executable
+      const houdiniPath = "C:\\Program Files\\Side Effects Software\\Houdini 20.0.653\\bin\\houdini.exe";
+  
+      // command to run
+      const command = ${houdiniPath} "${assetPath}";
+  
+      try {
+        await execAsync(command);
+        console.log("Houdini launched successfully.");
+      } catch (error) {
+        console.error("Error launching Houdini:", error);
+        throw new ActionError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to launch Houdini",
+        });
+      }
     },
   }),
 
