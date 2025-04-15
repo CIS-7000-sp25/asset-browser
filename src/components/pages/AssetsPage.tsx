@@ -276,7 +276,7 @@ const AssetsPage = () => {
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="cursor-pointer">My Commits</DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer" onClick={() => window.location.href = "/user"}>My Commits</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="cursor-pointer">Sign Out</DropdownMenuItem>
             </DropdownMenuContent>

@@ -1,0 +1,8 @@
+---
+import UserPage from "@/components/pages/UserPage";
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout>
+  <UserPage client:only="react" />
+</Layout>
