@@ -87,8 +87,8 @@ export const server = {
         throw new ActionError({
           code: "INTERNAL_SERVER_ERROR",
           message: response.statusText
-            ? `Failed to check in asset. Error message: ${response.statusText}`
-            : "Failed to check in asset",
+            ? `Failed to create asset. Error message: ${response.statusText}`
+            : "Failed to create asset",
         });
       }
     },

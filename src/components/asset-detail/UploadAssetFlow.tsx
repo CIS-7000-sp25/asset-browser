@@ -103,10 +103,6 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
 
       const { data, error } = await actions.createAsset(formData);
 
-      if (data) {
-        console.log("should have worked");
-      }
-
       if (error) {
         console.log("Error: ", error.message);
       }
