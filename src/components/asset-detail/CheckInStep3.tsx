@@ -73,7 +73,7 @@ const CheckInStep3 = ({ asset, onComplete, onMetadataChange }: CheckInStep3Props
       note: description,
     };
 
-    const metadata: Metadata = {
+    const new_metadata: Metadata = {
       assetName: asset.name,
       assetStructureVersion: "03.00.00",
       keywords: keywords.split(","),
@@ -82,9 +82,9 @@ const CheckInStep3 = ({ asset, onComplete, onMetadataChange }: CheckInStep3Props
       versionMap: {},
     };
 
-    console.log(metadata);
+    console.log(new_metadata);
 
-    onMetadataChange(metadata);
+    onMetadataChange(new_metadata);
     onComplete();
   };
 

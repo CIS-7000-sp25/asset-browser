@@ -3,6 +3,7 @@ import { ActionError, defineAction } from "astro:actions";
 import { z } from "astro:schema";
 
 // const API_URL = "https://usd-asset-library.up.railway.app/api";
+const API_URL = "http://127.0.0.1:8000";
 
 export const server = {
   getAssets: defineAction({
@@ -70,15 +71,16 @@ export const server = {
       version: z.string(),
       file: z.instanceof(File)
     }),
-    handler: async ({ assetName, file })  => {
+    handler: async ({ assetName, version, file })  => {
       console.log("[DEBUG] API: assetName type:", typeof assetName);
       console.log("[DEBUG] API: API URL:", API_URL);
 
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("version", version);
 
-      const response = await fetch(`${API_URL}/assets/${assetName}`, {
-        method: "POST",
+      const response = await fetch(`${API_URL}/api/assets/${assetName}/upload/`, {
+        method: 'POST',
         body: formData,
       })
 

@@ -93,11 +93,12 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
 
       console.log(`uploaded: ${uploadedFiles[0].name}`);
       console.log(typeof(uploadedFiles[0]));
+      console.log(`metadata: ${metadata.assetStructureVersion}`);
 
       // Temporary code for now, most direct way to upload assets
       const formData = new FormData();
       formData.append("assetName", assetName);
-      formData.append("version", "test");
+      formData.append("version", "1.00.00");
       formData.append("file", uploadedFiles[0] as File);
 
       const { data, error } = await actions.createAsset(formData);
@@ -181,7 +182,7 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
           <CheckInStep3
             asset={mockAsset}
             onComplete={handleNextStep}
-            onMetadataChange={handleMetadataChange}
+            onMetadataChange={setMetadata}
           />
         )}
       </DialogContent>
