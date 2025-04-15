@@ -168,12 +168,14 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
     console.log("Asset name:", assetName);
     console.log("User:", user);
 
-    const { data, error } = await actions.checkinAsset({
-      assetName,
-      pennKey: user.pennId,
-      files: userFiles,
-      metadata,
-    });
+    // TO DO: Replace userFiles with a single file, not an array
+    const formData = new FormData();
+    formData.append("assetName", assetName);
+    formData.append("pennKey", user.pennId);
+    formData.append("file", userFiles[0]);
+    // formData.append("metadata", metadata); // TO DO: formData cannot append custom metadata type?
+
+    const { data, error } = await actions.checkinAsset(formData);
 
     if (error) {
       console.error("Error checking in asset:", error.message);

@@ -119,56 +119,33 @@ export const server = {
   }),
 
   checkinAsset: defineAction({
+    accept: "form",
     input: z.object({
       assetName: z.string(),
       pennKey: z.string(),
-      files: z.instanceof(File).array(),
+      file: z.instanceof(File), // used to be an array, now just one because ZIP
       metadata: MetadataSchema,
     }),
-    handler: async ({ assetName, pennKey, files, metadata }) => {
+    handler: async ({ assetName, pennKey, file, metadata }) => {
       const formData = new FormData();
+      formData.append("file", file);
 
-      for (const file in files) {
-        formData.append("files", file);
-      }
-
-      // S3 update, returns Version IDs
-      const responseVersionIds = await fetch(`${API_URL}/assets/${assetName}/`, {
+      // S3 update, currently does not return version IDs - instead writes to a assetName/version/file path
+      const response = await fetch(`${API_URL}/assets/${assetName}/checkin/`, {
         method: "POST",
         body: formData,
       });
 
-      if (!responseVersionIds.ok) {
+      if (!response.ok) {
         throw new ActionError({
           code: "INTERNAL_SERVER_ERROR",
-          message: responseVersionIds.statusText
-            ? `Failed to check in asset. Error message: ${responseVersionIds.statusText}`
-            : "Failed to check in asset",
+          message: response.statusText || "Failed to check in asset",
         });
       }
 
-      const versionData = await responseVersionIds.json();
-      const versionMap = versionData.version_map as VersionMap;
+      // TO DO: Handle metadata updates and version ID control should it happen
 
-      console.log("version_map:", versionMap);
-      metadata.versionMap = versionMap;
-
-      // Metadata update, adds new AssetVersions based on Commit
-      const responseMetadata = await fetch(`${API_URL}/metadata/${assetName}/`, {
-        method: "POST",
-        body: JSON.stringify(metadata),
-      });
-
-      if (!responseMetadata.ok) {
-        throw new ActionError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: responseMetadata.statusText
-            ? `Failed to check in asset. Error message: ${responseMetadata.statusText}`
-            : "Failed to check in asset",
-        });
-      }
-
-      const data = await responseMetadata.json();
+      const data = await response.json();
       return data;
     },
   }),
