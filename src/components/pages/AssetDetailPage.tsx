@@ -284,7 +284,7 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
         <Button
           variant="ghost"
           className="flex items-center gap-1 hover:bg-secondary/80 transition-all"
-          onClick={() => window.history.back()}
+          onClick={() => (window.location.href = "/")}
         >
           <ChevronLeft className="h-4 w-4" />
           Back to Assets

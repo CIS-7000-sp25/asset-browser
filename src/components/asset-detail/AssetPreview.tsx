@@ -1,10 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { type DisplayOptions, type ViewController, initModelViewers } from "@/lib/model-viewer";
 import type { AssetWithDetails } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import * as Portal from "@radix-ui/react-portal";
-import { EyeIcon, ImageIcon, MaximizeIcon, MinimizeIcon } from "lucide-react";
+import { actions } from "astro:actions";
+import { EyeIcon, ImageIcon, Loader2Icon, MaximizeIcon, MinimizeIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type ModelViewerState = {
@@ -13,7 +15,10 @@ type ModelViewerState = {
 };
 
 const AssetPreview = ({ asset }: { asset: AssetWithDetails }) => {
+  const { toast } = useToast();
+
   const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [isFetchingModel, setIsFetchingModel] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
 
   const [state, setState] = useState<ModelViewerState>({
@@ -70,7 +75,7 @@ const AssetPreview = ({ asset }: { asset: AssetWithDetails }) => {
         src={asset.thumbnailUrl}
         alt={asset.name}
         loading="eager"
-        className={cn("w-full h-full object-cover")}
+        className="w-full h-full object-cover"
       />
 
       <canvas
@@ -88,6 +93,7 @@ const AssetPreview = ({ asset }: { asset: AssetWithDetails }) => {
           className="inset-0 fixed bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
         />
         <div
+          id="attach-gui-here"
           data-state={portalState}
           className="fixed data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 top-1/2 bg-card rounded-2xl overflow-hidden left-1/2 w-full h-full max-h-[calc(100vh-5rem)] max-w-[calc(100vw-5rem)] translate-x-[-50%] translate-y-[-50%] shadow-xl"
         >
@@ -112,18 +118,38 @@ const AssetPreview = ({ asset }: { asset: AssetWithDetails }) => {
         <div className="flex items-center justify-center rounded-2xl gap-3">
           <Button
             className="w-[225px]"
-            onClick={() => {
+            onClick={async () => {
               if (isFirstLoad) {
                 setIsFirstLoad(false);
 
-                if (windowCanvasRef.current && fullscreenCanvasRef.current) {
-                  controller.current = initModelViewers(
-                    windowCanvasRef.current,
-                    fullscreenCanvasRef.current
-                  );
-                } else {
+                if (!windowCanvasRef.current || !fullscreenCanvasRef.current) {
                   console.error("[DEBUG] Could not find window/fullscreen <canvas> elements!");
+                  return;
                 }
+
+                setIsFetchingModel(true);
+                const { data: modelData, error } = await actions.downloadGlb({
+                  assetName: asset.name,
+                });
+
+                if (error) {
+                  toast({
+                    title: "Downloading .glb file failed",
+                    description: `An error occurred while fetching the model. Error: ${error.message}`,
+                    variant: "destructive",
+                  });
+
+                  setIsFetchingModel(false);
+                  setIsFirstLoad(true);
+                  return;
+                }
+
+                controller.current = await initModelViewers(
+                  windowCanvasRef.current,
+                  fullscreenCanvasRef.current,
+                  modelData,
+                  () => setIsFetchingModel(false)
+                );
 
                 controller.current.switchTo("window");
                 window.addEventListener("keydown", handleKeyDown);
@@ -131,10 +157,15 @@ const AssetPreview = ({ asset }: { asset: AssetWithDetails }) => {
 
               setState({ visible: !state.visible, display: "window" });
             }}
+            disabled={isFetchingModel}
           >
             {state.visible ? (
               <>
                 <ImageIcon /> View thumbnail
+              </>
+            ) : isFetchingModel ? (
+              <>
+                <Loader2Icon className="animate-spin" /> Fetching model...
               </>
             ) : (
               <>

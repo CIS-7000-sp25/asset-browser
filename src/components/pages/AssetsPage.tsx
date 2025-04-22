@@ -20,18 +20,22 @@ import { Check, ChevronDown, Filter, Plus, Search, User } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface SearchBarProps {
+  users: GetUsersBody["users"];
   onSearch: (search: string) => void;
   onAuthorFilter: (author: string | null) => void;
   onCheckedInFilter: (checkedInOnly: boolean) => void;
   onSort: (sortBy: string) => void;
 }
 
-const SearchBar = ({ onSearch, onAuthorFilter, onCheckedInFilter, onSort }: SearchBarProps) => {
-  const { toast } = useToast();
-
+const SearchBar = ({
+  users,
+  onSearch,
+  onAuthorFilter,
+  onCheckedInFilter,
+  onSort,
+}: SearchBarProps) => {
   const [searchValue, setSearchValue] = useState("");
   const [showCheckedInOnly, setShowCheckedInOnly] = useState(false);
-  const [authors, setAuthors] = useState<string[]>([]);
   const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState("updated");
   const [createAssetOpen, setCreateAssetOpen] = useState(false);
@@ -42,27 +46,6 @@ const SearchBar = ({ onSearch, onAuthorFilter, onCheckedInFilter, onSort }: Sear
     { label: "Recently Updated", value: "updated" },
     { label: "Recently Created", value: "created" },
   ];
-
-  useEffect(() => {
-    // Fetch authors when component mounts
-    const fetchAuthors = async () => {
-      const { data, error } = await actions.getAuthors();
-
-      if (error) {
-        toast({
-          title: "getAuthors - TODO",
-          description: "Not implemented. 'Filter by Author' will be empty for now.",
-          variant: "destructive",
-        });
-
-        setAuthors([]);
-      } else {
-        // TODO
-      }
-    };
-
-    fetchAuthors();
-  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,14 +121,14 @@ const SearchBar = ({ onSearch, onAuthorFilter, onCheckedInFilter, onSort }: Sear
               <DropdownMenuSeparator />
               <div className="max-h-[300px] overflow-y-auto">
                 <DropdownMenuGroup>
-                  {authors.map((author) => (
+                  {users.map((user) => (
                     <DropdownMenuItem
-                      key={author}
-                      onClick={() => handleAuthorSelect(author)}
+                      key={user.pennId}
+                      onClick={() => handleAuthorSelect(user.pennId)}
                       className="flex items-center justify-between cursor-pointer"
                     >
-                      {author}
-                      {selectedAuthor === author && <Check className="h-4 w-4" />}
+                      {user.fullName}
+                      {selectedAuthor === user.pennId && <Check className="h-4 w-4" />}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuGroup>
@@ -203,7 +186,7 @@ const SearchBar = ({ onSearch, onAuthorFilter, onCheckedInFilter, onSort }: Sear
   );
 };
 
-const AssetsPage = ({ data, error }: { data: GetUsersBody; error: any }) => {
+const AssetsPage = ({ users, error }: { users: GetUsersBody["users"]; error: any }) => {
   const { toast } = useToast();
 
   const [assets, setAssets] = useState<AssetWithDetails[]>([]);
@@ -288,7 +271,7 @@ const AssetsPage = ({ data, error }: { data: GetUsersBody; error: any }) => {
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {data.users.map((user) => (
+              {users.map((user) => (
                 <DropdownMenuItem className="cursor-pointer">
                   <a href={`/user/${user.pennId}`}>{user.pennId}</a>
                 </DropdownMenuItem>
@@ -303,6 +286,7 @@ const AssetsPage = ({ data, error }: { data: GetUsersBody; error: any }) => {
       </div>
 
       <SearchBar
+        users={users}
         onSearch={setSearchTerm}
         onAuthorFilter={setFilterAuthor}
         onCheckedInFilter={setShowCheckedInOnly}

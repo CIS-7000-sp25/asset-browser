@@ -1,6 +1,4 @@
 import { Button } from "@/components/ui/button";
-import type { AssetWithDetails } from "@/lib/types";
-
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -8,19 +6,14 @@ import type { GetUserBody } from "@/lib/types";
 import { ChevronLeft } from "lucide-react";
 import { useState } from "react";
 
-// Extended commit type that includes asset information
-
 interface UserPageProps {
   pennKey: string;
   data: GetUserBody;
   error: any;
 }
 
-interface UserDetails {}
-
 const UserPage = ({ pennKey, data, error }: UserPageProps) => {
   const { toast } = useToast();
-  const [asset, setAsset] = useState<AssetWithDetails | null>(null);
   const [selectedTab, setSelectedTab] = useState<"commits" | "created" | "checkedOut">("commits");
 
   console.log(data);

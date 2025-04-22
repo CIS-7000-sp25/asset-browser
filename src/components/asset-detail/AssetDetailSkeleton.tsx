@@ -4,7 +4,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 
 const AssetDetailSkeleton = () => {
   const handleBack = () => {
-    window.history.back();
+    window.location.href = "/";
   };
 
   return (
@@ -15,13 +15,13 @@ const AssetDetailSkeleton = () => {
           Back to Assets
         </Button>
       </div>
-      
+
       <div className="flex flex-col lg:flex-row lg:items-start lg:gap-10 px-4">
         <div className="flex-1 space-y-5">
           <div>
             <Skeleton className="h-8 w-64" />
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="text-sm text-muted-foreground">Version</div>

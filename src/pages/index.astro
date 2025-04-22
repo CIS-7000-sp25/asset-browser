@@ -8,5 +8,5 @@ console.log(data);
 ---
 
 <Layout>
-  <AssetsPage client:only="react" data={data!} error={error} />
+  <AssetsPage client:only="react" users={data!.users} error={error} />
 </Layout>

@@ -6,3 +6,15 @@ import Layout from "../../layouts/Layout.astro";
 <Layout>
   <AssetDetailReactApp assetName={Astro.params.id} client:only="react" />
 </Layout>
+
+<style is:inline>
+  .lil-gui.root {
+    position: absolute;
+    top: 1.25rem;
+    left: 1.25rem;
+    --font-size: 14px;
+    --input-font-size: var(--font-size);
+    --font-family: "Geist Sans";
+    --font-family-mono: "Geist Mono";
+  }
+</style>
