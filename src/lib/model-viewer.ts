@@ -1,3 +1,4 @@
+import GUI from "lil-gui";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -84,6 +85,30 @@ async function initModelViewers(
   dirLight.position.set(0.5, 0, 0.866);
   camera.add(dirLight);
   scene.add(camera);
+
+  const guiOptions = {
+    "Background Color": 0x191919,
+    "Light Color": 0xffffff,
+    "Light Intensity": 3,
+    "Auto Rotate": true,
+  };
+
+  const gui = new GUI({
+    container: document.querySelector<HTMLDivElement>("#attach-gui-here")!,
+    width: 400,
+  });
+
+  gui
+    .addColor(guiOptions, "Background Color")
+    .onChange((value: number) => (scene.background = new THREE.Color(value)));
+  gui.addColor(guiOptions, "Light Color").onChange((value: number) => dirLight.color.set(value));
+  gui
+    .add(guiOptions, "Light Intensity", 0, 10, 0.1)
+    .onChange((value: number) => (dirLight.intensity = value));
+  gui.add(guiOptions, "Auto Rotate").onChange((value: boolean) => {
+    controls.autoRotate = value;
+    controls.update();
+  });
 
   callbackWhenFinished();
 
