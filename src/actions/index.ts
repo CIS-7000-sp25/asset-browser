@@ -105,6 +105,36 @@ export const server = {
     },
   }),
 
+  createAssetMetadata: defineAction({
+    input: z.object({
+      asset_metadata: MetadataSchema
+    }),
+    handler: async ({ asset_metadata }) => {
+      console.log(`test: ${JSON.stringify(asset_metadata)}`);
+
+      const assetName = asset_metadata.assetName;
+      const response = await fetch(`${API_URL}/metadata/${assetName}/upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(asset_metadata)
+      });
+
+      if (!response.ok) {
+        throw new ActionError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: await response.json()
+            ? `Failed to create asset metadata. Error message: ${JSON.stringify(await response.json())}`
+            : "Failed to create asset metadata",
+        });
+      }
+
+      const data = await response.json();
+      return data;
+    }
+  }),
+
   checkoutAsset: defineAction({
     input: z.object({ assetName: z.string(), pennKey: z.string() }),
     handler: async ({ assetName, pennKey }) => {

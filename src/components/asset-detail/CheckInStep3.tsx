@@ -20,12 +20,11 @@ import React, { useState } from "react";
 
 interface CheckInStep3Props {
   asset: AssetWithDetails;
-  onComplete: () => void;
-  onMetadataChange: (newMetadata: Metadata) => void;
+  onComplete: (metadata: Metadata | null) => void;
   onBack: () => void;
 }
 
-const CheckInStep3 = ({ asset, onComplete, onMetadataChange, onBack }: CheckInStep3Props) => {
+const CheckInStep3 = ({ asset, onComplete, onBack }: CheckInStep3Props) => {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [version, setVersion] = useState<string>("");
   const [materials, setMaterials] = useState<string>("None");
@@ -70,7 +69,7 @@ const CheckInStep3 = ({ asset, onComplete, onMetadataChange, onBack }: CheckInSt
     const commit: Commit = {
       author: user.pennId,
       version: version,
-      timestamp: date.toString(),
+      timestamp: date.toISOString(),
       note: description,
     };
 
@@ -83,10 +82,7 @@ const CheckInStep3 = ({ asset, onComplete, onMetadataChange, onBack }: CheckInSt
       versionMap: {},
     };
 
-    console.log(new_metadata);
-
-    onMetadataChange(new_metadata);
-    onComplete();
+    onComplete(new_metadata);
   };
 
   const isFormValid = () => {
