@@ -1,6 +1,6 @@
-import type { AssetWithDetails } from "@/lib/types";
 import { actions } from "astro:actions";
 import { ArrowLeft, FileUp, X } from "lucide-react";
+import type { AssetWithDetails, Metadata } from "@/lib/types";
 import { useRef, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { DialogHeader, DialogTitle } from "../../components/ui/dialog";
@@ -11,8 +11,8 @@ interface CheckInStep2Props {
   setUploadedFiles: (files: File[]) => void;
   verificationComplete: boolean;
   setVerificationComplete: (complete: boolean) => void;
-  onNext: () => void;
   onBack: () => void;
+  onNext: (metadata: Metadata | null) => void;
 }
 
 const CheckInStep2 = ({
@@ -201,7 +201,11 @@ const CheckInStep2 = ({
           <ArrowLeft size={16} />
           Back
         </Button>
-        <Button onClick={onNext} disabled={!verificationComplete}>
+        <Button onClick={() => onNext(null)} disabled={!verificationComplete}>
+        </Button>
+      </div>
+      <div className="flex justify-end mt-6">
+        <Button onClick={() => onNext(null)} disabled={!verificationComplete}>
           Proceed
         </Button>
       </div>

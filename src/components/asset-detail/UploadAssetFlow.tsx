@@ -24,7 +24,7 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [verificationComplete, setVerificationComplete] = useState(false);
-  const [metadata, setMetadata] = useState<Metadata>({} as Metadata);
+  // const [metadata, setMetadata] = useState<Metadata>({} as Metadata);
 
   // Mock asset for steps 2 and 3
   const mockAsset = {
@@ -47,7 +47,7 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
     category: "default",
   } as AssetWithDetails;
 
-  const handleNextStep = () => {
+  const handleNextStep = (metadata : Metadata | null) => {
     if (step === 1) {
       if (!assetName.trim()) {
         toast({
@@ -71,11 +71,11 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
       }
       setStep(3);
     } else {
-      handleComplete();
+      handleComplete(metadata);
     }
   };
 
-  const handleComplete = async () => {
+  const handleComplete = async (metadata : Metadata | null) => {
     try {
       toast({
         title: "Creating Asset",
@@ -93,7 +93,7 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
 
       console.log(`uploaded: ${uploadedFiles[0].name}`);
       console.log(typeof(uploadedFiles[0]));
-      console.log(`metadata: ${metadata.assetStructureVersion}`);
+      console.log(`metadata: ${metadata}`);
 
       // Temporary code for now, most direct way to upload assets
       const formData = new FormData();
@@ -107,13 +107,18 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
         throw new Error(data.error_msg);
       }
 
+      // Metadata upload
+      if (metadata) {
+        const metadataResponse = (await actions.createAssetMetadata({asset_metadata:metadata}));
+      }
+
       // Reset the form
       setStep(1);
       setAssetName("");
       setAssetDescription("");
       setUploadedFiles([]);
       setVerificationComplete(false);
-      setMetadata({} as Metadata);
+      // setMetadata({} as Metadata);
     } catch (error) {
       toast({
         title: "Error",
@@ -123,10 +128,6 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
         variant: "destructive",
       });
     }
-  };
-
-  const handleMetadataChange = (newMetadata: Metadata) => {
-    setMetadata(newMetadata);
   };
 
   return (
@@ -158,7 +159,7 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
             </div>
 
             <div className="flex justify-end">
-              <Button onClick={handleNextStep}>Next</Button>
+              <Button onClick={() => handleNextStep(null)}>Next</Button>
             </div>
           </>
         )}
@@ -178,8 +179,7 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
         {step === 3 && (
           <CheckInStep3
             asset={mockAsset}
-            onComplete={handleComplete}
-            onMetadataChange={setMetadata}
+            onComplete={handleNextStep}
             onBack={() => setStep(2)}
           />
         )}
