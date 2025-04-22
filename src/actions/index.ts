@@ -3,6 +3,7 @@ import { MetadataSchema, type GetUserBody, type GetUsersBody } from "@/lib/types
 import { ActionError, defineAction } from "astro:actions";
 import { z } from "astro:schema";
 import { execFile } from "child_process";
+//import jwt_decode from 'jwt-decode';
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -379,4 +380,72 @@ export const server = {
       return data;
     },
   }),
+
+  storeLoginTokens: defineAction({
+    accept: "form",
+    input: z.object({
+      username: z.string(),
+      password: z.string(),
+    }),
+    handler: async ({ username, password }) => {
+
+      const response = await fetch(`${API_URL}/token/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          "username": username,
+          "password": password,
+        }),
+      });
+
+      if (!response.ok) {
+        console.log("[DEBUG] getLoginToken(): failed to get login token");
+        if (response.status === 401) {
+          throw new ActionError({
+            code: "UNAUTHORIZED",
+            message: "Invalid credentials",
+          });
+        }
+      }
+
+      const data = await response.json();
+      
+      return data;
+    }
+  }),
+
+  // move out of local storage 
+  refreshToken: defineAction({
+    accept: "form",
+    input: z.object({
+      refreshToken: z.string(),
+    }),
+    handler: async ({ refreshToken }) => {
+
+      const response = await fetch(`${API_URL}/token/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          "refresh": refreshToken,
+        }),
+      });
+
+      if (!response.ok) {
+        console.log("[DEBUG] refreshToken(): failed to get access token");
+        if (response.status === 401) {
+          console.log("Refresh token expired. Please log in again.")
+          return "";
+        }
+      }
+
+      const data = await response.json();
+      
+      return data.access;
+    }
+  }),
+
 };

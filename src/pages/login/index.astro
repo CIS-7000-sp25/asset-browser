@@ -1,0 +1,12 @@
+---
+import LoginForm from "@/components/pages/LoginPage";
+import Layout from "@/layouts/Layout.astro";
+import { actions } from "astro:actions";
+
+const {data, error} = await Astro.callAction(actions.getUsers, undefined);
+console.log(data);
+---
+
+<Layout>
+    <LoginForm client:load />
+</Layout>
