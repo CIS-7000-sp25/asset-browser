@@ -33,7 +33,7 @@ def process_hip_file(input_file, output_file, modifications_func):
 def change_controller():
     
     # Get the node
-    node_path = "/obj/STAGE_V05/CONTROLLER"
+    node_path = "/obj/STAGE/CONTROLLER"
     node = hou.node(node_path)
     if node is None:
         raise ValueError(f"Node not found: {node_path}")
@@ -45,10 +45,19 @@ def change_controller():
         raise ValueError(f"Parameter '{parameter_name}' not found on node {node_path}")
     
     # Set the new value
-    param.set("beegCrab")
+    param.set("bookStack")
+
+    checked_out = " & pyCheckedOut & "
+
+    parm_group = node.parmTemplateGroup()
+    bool_parm = hou.ToggleParmTemplate("checked_out", "Checked Out", default_value=checked_out)
+
+    # Add the parameter to the node
+    parm_group.append(bool_parm)
+    node.setParmTemplateGroup(parm_group)
     
 
 # Example usage
 if __name__ == "__main__":
     
-    process_hip_file(r"C:/users/0cfer/Downloads/houdini_usd_template_v02.hiplc", r"C:\Users\0cfer\Downloads\assetImport\beegCrab\generated_scene.hip", change_controller)
+    process_hip_file(r"C:/users/0cfer/Downloads/houdini_usd_template_v03.hipnc", r"C:\Users\0cfer\Downloads\generated_scene.hip", change_controller)

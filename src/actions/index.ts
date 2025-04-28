@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as unzipper from 'unzipper';
 import type { AssetWithDetails } from "@/lib/types";
 
+
 interface AssetCardProps {
   asset: AssetWithDetails;
 }
@@ -99,7 +100,6 @@ function findHythonPath(): string | null {
 
 function writePythonHipFile(filePath:string, assetName:string, checkedOut: boolean, hdaPath: string, outputHipFile: string) {
 
-
 const content = `
 import hou
 import os
@@ -135,7 +135,7 @@ def process_hip_file(input_file, output_file, modifications_func):
 def change_controller():
     
     # Get the node
-    node_path = "/obj/STAGE_V05/CONTROLLER"
+    node_path = "/obj/STAGE/CONTROLLER"
     node = hou.node(node_path)
     if node is None:
         raise ValueError(f"Node not found: {node_path}")
@@ -148,6 +148,15 @@ def change_controller():
     
     # Set the new value
     param.set("`+assetName+`")
+
+    checked_out = " & pyCheckedOut & "
+
+    parm_group = node.parmTemplateGroup()
+    bool_parm = hou.ToggleParmTemplate("checked_out", "Checked Out", default_value=checked_out)
+
+    # Add the parameter to the node
+    parm_group.append(bool_parm)
+    node.setParmTemplateGroup(parm_group)
     
 
 # Example usage
@@ -155,104 +164,6 @@ if __name__ == "__main__":
     
     process_hip_file(r"`+hdaPath+`", r"`+outputHipFile+`", change_controller)
 `;
-
-// const content = `
-// import hou
-
-// def create_usd_import_setup(asset_name="bookStack", position=(0, 0)):
-//     """
-//     Programmatically create nodes that mimic the usd_template_import recipe
-//     """
-//     # Create a container for our setup
-//     obj = hou.node("/obj")
-//     geo = obj.createNode("geo", "usd_import")
-//     geo.setPosition(position)
-    
-//     # Create an import node
-//     import_node = geo.createNode("fileimport", "usd_import")
-//     import_node.parm("assetName").set(asset_name)
-    
-//     # Create additional nodes as needed (adjust based on what the recipe actually does)
-//     null_out = geo.createNode("null", "OUT")
-//     null_out.setInput(0, import_node)
-//     null_out.setDisplayFlag(True)
-//     null_out.setRenderFlag(True)
-    
-//     # Layout the network
-//     geo.layoutChildren()
-    
-//     return geo
-
-// # Example usage
-// if __name__ == "__main__":
-//     # Clear or load a scene
-//     hou.hipFile.clear()
-    
-//     # Create our setup
-//     setup = create_usd_import_setup(asset_name="bookStack")
-    
-//     # Save the result
-//     hou.hipFile.save("/path/to/output.hip")
-// This approach bypasses the recipe system entirely by creating the nodes directly. While it requires more code, it's more reliable in headless mode.
-// If you really need to use the recipe system:
-
-// First check if your recipe exists by adding this code and running it in the full Houdini (not hython):
-// pythonimport hou
-// recipes = hou.data.tabToolRecipes()
-// print([r.name() for r in recipes])
-
-// If your recipe is there but still not working in hython, you might need to examine what the recipe does by creating it in the UI and then using Python to recreate the node structure programmatically.
-
-// Would you like me to help you create a programmatic version of that specific USD import setup instead of using the recipe system?RetryClaude does not have the ability to run the code it generates yet.MAttributeError: module 'houpythonportion.data' has no attribute 'tabToolRecipes'. Did you mean: 'saveTabToolRecipe'?EditIt looks like there's a discrepancy in the API for accessing the Tab Tool recipes. Let me help you with a better alternative that will definitely work with hython.exe.
-// Since the recipe system is giving you trouble in headless mode, the most reliable approach is to create the node network programmatically. Here's how you can create a USD import setup directly:
-// pythonimport hou
-
-// def create_usd_import_setup(asset_name, position=(0, 0)):
-//     """
-//     Create a USD import setup programmatically
-//     """
-//     # Create a container
-//     stage = hou.node("/stage")
-//     geo = stage.createNode("geo", "usd_import")
-//     geo.setPosition(position)
-    
-//     # Create a USD import SOP (or similar node that matches your workflow)
-//     # The exact node type depends on your Houdini version and intended workflow
-//     usd_import = geo.createNode("usdimport", "usd_import")
-    
-//     # Set parameters - adjust these based on your specific needs
-//     if "assetName" in [p.name() for p in usd_import.parms()]:
-//         usd_import.parm("assetName").set(asset_name)
-//     elif "filepath" in [p.name() for p in usd_import.parms()]:
-//         # Some versions might use filepath instead
-//         usd_import.parm("filepath").set(f"/path/to/assets/{asset_name}.usd")
-    
-//     # Create output null
-//     null_out = geo.createNode("null", "OUT")
-//     null_out.setInput(0, usd_import)
-//     null_out.setDisplayFlag(True)
-//     null_out.setRenderFlag(True)
-    
-//     # Layout the network
-//     geo.layoutChildren()
-    
-//     return geo
-
-// # Example usage in a complete script for hython
-// if __name__ == "__main__":
-//     # Create a new scene
-//     hou.hipFile.clear()
-    
-//     # Create our USD import setup
-//     setup = create_usd_import_setup(asset_name="`+assetName+`")
- 
-//     # Save the result
-//     output_path = sys.argv[1] if len(sys.argv) > 1 else "C:/temp/generated_scene.hip"
-//     hou.hipFile.save(output_path)
-
-//     print("USD import setup created successfully!") 
-// `;
-
 
   fs.writeFile(filePath, content, (err) => {
     if (err) {
@@ -453,7 +364,7 @@ export const server = {
       console.log("[DEBUG] final exePath:", exePath);
 
       const assetZip = os.homedir()+"\\Downloads\\"+ assetName + ".zip"
-      const outputDir = os.homedir()+"\\Downloads\\assetImport\\"+ assetName +"\\";
+      const outputDir = os.homedir()+"\\Downloads\\assetImport\\";
       
       // if the zip file exists
       if (fs.existsSync(assetZip)) {
@@ -477,16 +388,37 @@ export const server = {
         console.log("[DEBUG] hythonExe path:", hythonExe);
              
         // create python generation file here
-        const hdaPath = "C:/users/0cfer/Downloads/houdini_usd_template_v02.hiplc";
+        const hdaPath = "C:/users/0cfer/Downloads/houdini_usd_template_v03.hipnc";
 
         const res = await fetch(`${API_URL}/assets/${assetName}`);
         const json = await res.json();
         const isCheckedOut = json.asset?.isCheckedOut ?? false;
 
-        const outputHipFile = outputDir +'\generated_scene.hip';
+        const outputHipFile = os.homedir()+'\\Downloads\\generated_scene.hip';
 
         writePythonHipFile(process.cwd()+"\\writtenPythonScript.py",assetName,isCheckedOut,hdaPath,outputHipFile);
         const pythonScript = process.cwd() + "\\writtenPythonScript.py";
+
+        //const mayaPath = "C:/Program Files/Autodesk/Maya2025/bin/maya.exe";
+        //const mayaFile = "C:/users/0cfer/Downloads/crystal_model_v001.ma";
+        /*
+        execFile(mayaPath, [mayaFile], (error, stdout, stderr) => {
+          if (error) {
+            console.error(`Error running Hython: ${error.message}`);
+            return;
+          }
+          
+          if (stderr && stderr.trim()) {
+            console.error(`Hython stderr: ${stderr}`);
+          }
+          
+          if (stdout && stdout.trim()) {
+            console.log(`Hython stdout: ${stdout}`);
+          }
+          
+          console.log(`Maya opened successfully at: ${mayaPath}`);
+        });
+        */
 
         if (hythonExe) {
           execFile(hythonExe, [pythonScript, outputHipFile], (error, stdout, stderr) => {
