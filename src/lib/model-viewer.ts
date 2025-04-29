@@ -2,6 +2,7 @@ import GUI from "lil-gui";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OutlineEffect } from "three/addons/effects/OutlineEffect.js";
 
 type DisplayOptions = "window" | "fullscreen";
 
@@ -36,8 +37,14 @@ async function initModelViewers(
   model: ArrayBuffer,
   callbackWhenFinished: () => void
 ) {
-  const windowRenderer = new THREE.WebGLRenderer({ antialias: true, canvas: windowCanvas });
-  const fullscreenRenderer = new THREE.WebGLRenderer({ antialias: true, canvas: fullscreenCanvas });
+  const windowRenderer = new THREE.WebGLRenderer({
+    antialias: true,
+    canvas: windowCanvas,
+  });
+  const fullscreenRenderer = new THREE.WebGLRenderer({
+    antialias: true,
+    canvas: fullscreenCanvas,
+  });
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, 2, 0.1, 2000);
@@ -86,11 +93,45 @@ async function initModelViewers(
   camera.add(dirLight);
   scene.add(camera);
 
+  const effect = new OutlineEffect(fullscreenRenderer);
+  const diffuseColor = new THREE.Color(0x707070);
+
+  const materials = {
+    Phong: new THREE.MeshPhongMaterial({ color: diffuseColor }),
+    Toon: new THREE.MeshToonMaterial({ color: diffuseColor }),
+    Lambert: new THREE.MeshLambertMaterial({ color: diffuseColor }),
+    Standard: new THREE.MeshStandardMaterial({ color: diffuseColor }),
+    Normals: new THREE.MeshNormalMaterial(),
+  };
+
+  let mainMeshes: THREE.Mesh[] = [];
+
+  // Based off of this discussion: https://discourse.threejs.org/t/adding-multiple-materials-layers-to-a-loaded-object/14117/14
+  gltfScene.traverse((child) => {
+    if (child instanceof THREE.Mesh && child.geometry) {
+      const geometry = child.geometry;
+
+      geometry.clearGroups();
+      geometry.addGroup(0, Infinity, 0);
+      geometry.addGroup(0, Infinity, 1);
+
+      child.material = materials.Phong;
+      mainMeshes.push(child); // Keep track of meshes in scene to dynamically update materials later
+    }
+  });
+
+  scene.fog = new THREE.Fog(0xcccccc, 1, 10);
+
   const guiOptions = {
     "Background Color": 0x191919,
     "Light Color": 0xffffff,
+    "Diffuse Color": 0xffffff,
     "Light Intensity": 3,
     "Auto Rotate": true,
+    "Use Outline Effect": true,
+    "Material Applied": "Phong",
+    "Fog Enabled": true,
+    "Fog Color": 0xcccccc,
   };
 
   const gui = new GUI({
@@ -101,13 +142,49 @@ async function initModelViewers(
   gui
     .addColor(guiOptions, "Background Color")
     .onChange((value: number) => (scene.background = new THREE.Color(value)));
-  gui.addColor(guiOptions, "Light Color").onChange((value: number) => dirLight.color.set(value));
+  gui
+    .addColor(guiOptions, "Light Color")
+    .onChange((value: number) => dirLight.color.set(value));
+  gui.addColor(guiOptions, "Diffuse Color").onChange((value: number) => {
+    for (const mesh of mainMeshes) {
+      (mesh.material as THREE.MeshStandardMaterial).color.set(value);
+    }
+  });
+
   gui
     .add(guiOptions, "Light Intensity", 0, 10, 0.1)
     .onChange((value: number) => (dirLight.intensity = value));
   gui.add(guiOptions, "Auto Rotate").onChange((value: boolean) => {
     controls.autoRotate = value;
     controls.update();
+  });
+
+  gui.add(guiOptions, "Use Outline Effect");
+
+  gui
+    .add(guiOptions, "Material Applied", Object.keys(materials))
+    .onChange((selected: string) => {
+      for (const mesh of mainMeshes) {
+        mesh.material = materials[selected as keyof typeof materials];
+      }
+    });
+
+  gui.add(guiOptions, "Fog Enabled").onChange((enabled: boolean) => {
+    if (enabled) {
+      scene.fog = new THREE.Fog(guiOptions["Fog Color"], 1, 15);
+    } else {
+      scene.fog = null;
+    }
+  });
+
+  gui.addColor(guiOptions, "Fog Color").onChange((color: number) => {
+    if (guiOptions["Fog Enabled"]) {
+      if (!scene.fog) {
+        scene.fog = new THREE.Fog(color, 1, 15);
+      } else {
+        scene.fog.color.set(color);
+      }
+    }
   });
 
   callbackWhenFinished();
@@ -118,7 +195,13 @@ async function initModelViewers(
     resizeRendererToDisplaySize(renderer, camera, false);
 
     controls.update();
-    renderer.render(scene, camera);
+    // renderer.render(scene, camera);
+
+    if (guiOptions["Use Outline Effect"] && renderer === fullscreenRenderer) {
+      effect.render(scene, camera);
+    } else {
+      renderer.render(scene, camera);
+    }
   }
 
   const controller = {
@@ -134,7 +217,9 @@ async function initModelViewers(
         windowRenderer.setAnimationLoop(null);
         resizeRendererToDisplaySize(fullscreenRenderer, camera, true);
         controls.connect(fullscreenRenderer.domElement);
-        fullscreenRenderer.setAnimationLoop((time) => render(time, fullscreenRenderer));
+        fullscreenRenderer.setAnimationLoop((time) =>
+          render(time, fullscreenRenderer)
+        );
       }
     },
   };
