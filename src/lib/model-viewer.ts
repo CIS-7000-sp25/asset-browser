@@ -102,7 +102,7 @@ async function initModelViewers(
     Toon: new THREE.MeshToonMaterial({ color: diffuseColor }),
     Lambert: new THREE.MeshLambertMaterial({ color: diffuseColor }),
     Standard: new THREE.MeshStandardMaterial({ color: diffuseColor }),
-    Phsyical: new THREE.MeshPhysicalMaterial({ color: diffuseColor }),
+    Physical: new THREE.MeshPhysicalMaterial({ color: diffuseColor }),
     Normals: new THREE.MeshNormalMaterial(),
     Wireframe: new THREE.MeshBasicMaterial({ wireframe: true })
   };
@@ -132,7 +132,7 @@ async function initModelViewers(
       meshMatMap.set(mesh, child.material.clone());
 
       if (originalMaterial instanceof THREE.MeshStandardMaterial) {
-        const physicalMaterial = materials.Phsyical.clone();
+        const physicalMaterial = materials.Physical.clone();
 
         physicalMaterial.color = originalMaterial.color;
         physicalMaterial.emissive = originalMaterial.emissive;
