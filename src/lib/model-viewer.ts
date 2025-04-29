@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { OutlineEffect } from "three/addons/effects/OutlineEffect.js";
+import { color, instance } from "three/src/nodes/TSL.js";
 
 type DisplayOptions = "window" | "fullscreen";
 
@@ -94,7 +95,7 @@ async function initModelViewers(
   scene.add(camera);
 
   const effect = new OutlineEffect(fullscreenRenderer);
-  const diffuseColor = new THREE.Color(0x707070);
+  let diffuseColor = new THREE.Color(0x707070);
 
   const materials = {
     Phong: new THREE.MeshPhongMaterial({ color: diffuseColor }),
@@ -102,9 +103,11 @@ async function initModelViewers(
     Lambert: new THREE.MeshLambertMaterial({ color: diffuseColor }),
     Standard: new THREE.MeshStandardMaterial({ color: diffuseColor }),
     Normals: new THREE.MeshNormalMaterial(),
+    Wireframe: new THREE.MeshBasicMaterial({ wireframe: true })
   };
 
   let mainMeshes: THREE.Mesh[] = [];
+  const meshMatMap = new Map<THREE.Mesh, THREE.MeshStandardMaterial>();
 
   // Based off of this discussion: https://discourse.threejs.org/t/adding-multiple-materials-layers-to-a-loaded-object/14117/14
   gltfScene.traverse((child) => {
@@ -115,8 +118,27 @@ async function initModelViewers(
       geometry.addGroup(0, Infinity, 0);
       geometry.addGroup(0, Infinity, 1);
 
-      child.material = materials.Phong;
+      const mesh = child as THREE.Mesh;
       mainMeshes.push(child); // Keep track of meshes in scene to dynamically update materials later
+
+      const originalMaterial = child.material.clone();
+      meshMatMap.set(mesh, child.material.clone());
+
+      if (originalMaterial instanceof THREE.MeshStandardMaterial) {
+
+        const phongMaterial = materials.Phong.clone();
+
+        phongMaterial.color = originalMaterial.color;
+        phongMaterial.emissive = originalMaterial.emissive;
+        phongMaterial.shininess = (1 - originalMaterial.roughness) * 100;
+  
+        const map = originalMaterial.map;
+        const normalMap = originalMaterial.normalMap;
+        if (map) phongMaterial.map = originalMaterial.map;
+        if (normalMap) phongMaterial.normalMap = originalMaterial.normalMap;
+  
+        child.material = phongMaterial;
+      }
     }
   });
 
@@ -127,6 +149,7 @@ async function initModelViewers(
     "Light Color": 0xffffff,
     "Diffuse Color": 0xffffff,
     "Light Intensity": 3,
+    "Show GLB colors": true,
     "Auto Rotate": true,
     "Use Outline Effect": true,
     "Material Applied": "Phong",
@@ -146,10 +169,29 @@ async function initModelViewers(
     .addColor(guiOptions, "Light Color")
     .onChange((value: number) => dirLight.color.set(value));
   gui.addColor(guiOptions, "Diffuse Color").onChange((value: number) => {
+    diffuseColor = new THREE.Color(value);
+
+    if (guiOptions["Show GLB colors"]) {
+      return;
+    }
+
     for (const mesh of mainMeshes) {
-      (mesh.material as THREE.MeshStandardMaterial).color.set(value);
+      const outValue = new THREE.Color(value);
+      (mesh.material as THREE.MeshStandardMaterial).color.copy(outValue);
     }
   });
+  
+  gui
+    .add(guiOptions, "Show GLB colors")
+    .onChange((value: boolean) => {
+      const diffuse = diffuseColor;
+
+      for (const mesh of mainMeshes) {
+        const material = meshMatMap.get(mesh)?.clone();
+        const outColor = (material && value) ? material.color.clone() : diffuse.clone();          
+        (mesh.material as THREE.MeshStandardMaterial).color.copy(outColor);
+      }
+    });
 
   gui
     .add(guiOptions, "Light Intensity", 0, 10, 0.1)
@@ -165,7 +207,23 @@ async function initModelViewers(
     .add(guiOptions, "Material Applied", Object.keys(materials))
     .onChange((selected: string) => {
       for (const mesh of mainMeshes) {
-        mesh.material = materials[selected as keyof typeof materials];
+        const originalMaterial = meshMatMap.get(mesh)?.clone();
+        const newMaterial = materials[selected as keyof typeof materials].clone();
+        
+        if (guiOptions["Show GLB colors"] && originalMaterial instanceof THREE.MeshStandardMaterial) {
+          if ('color' in newMaterial) newMaterial.color.copy(originalMaterial.color);
+          if ('emissive' in newMaterial) newMaterial.emissive.copy(originalMaterial.emissive);
+          if ('shininess' in newMaterial) newMaterial.shininess = (1 - originalMaterial.roughness) * 100;
+    
+          const map = originalMaterial.map;
+          const normalMap = originalMaterial.normalMap;
+          if (map && 'map' in newMaterial) newMaterial.map = originalMaterial.map;
+          if (normalMap && 'normalMap' in newMaterial) newMaterial.normalMap = originalMaterial.normalMap;
+        } else {
+          if ('color' in newMaterial) newMaterial.color = diffuseColor;
+        }
+
+        mesh.material = newMaterial;
       }
     });
 
