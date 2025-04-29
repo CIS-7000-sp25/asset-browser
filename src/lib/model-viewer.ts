@@ -102,9 +102,16 @@ async function initModelViewers(
     Toon: new THREE.MeshToonMaterial({ color: diffuseColor }),
     Lambert: new THREE.MeshLambertMaterial({ color: diffuseColor }),
     Standard: new THREE.MeshStandardMaterial({ color: diffuseColor }),
+    Phsyical: new THREE.MeshPhysicalMaterial({ color: diffuseColor }),
     Normals: new THREE.MeshNormalMaterial(),
     Wireframe: new THREE.MeshBasicMaterial({ wireframe: true })
   };
+
+  const backgrounds = {
+    Field: new THREE.CubeTextureLoader().setPath('https://sbcode.net/img/').load(['px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png'])
+  };
+  let backgroundColor = new THREE.Color(0x191919);
+  scene.environment = backgrounds.Field;
 
   let mainMeshes: THREE.Mesh[] = [];
   const meshMatMap = new Map<THREE.Mesh, THREE.MeshStandardMaterial>();
@@ -125,19 +132,28 @@ async function initModelViewers(
       meshMatMap.set(mesh, child.material.clone());
 
       if (originalMaterial instanceof THREE.MeshStandardMaterial) {
+        const physicalMaterial = materials.Phsyical.clone();
 
-        const phongMaterial = materials.Phong.clone();
+        physicalMaterial.color = originalMaterial.color;
+        physicalMaterial.emissive = originalMaterial.emissive;
+        physicalMaterial.roughness = originalMaterial.roughness;
+        physicalMaterial.metalness = originalMaterial.metalness;
+        
+        if (originalMaterial.transparent) {
+          physicalMaterial.transmission = 1;
+          physicalMaterial.clearcoat = 1;
+          physicalMaterial.ior = 1.17;
+          physicalMaterial.thickness = 5.12;
+        }
 
-        phongMaterial.color = originalMaterial.color;
-        phongMaterial.emissive = originalMaterial.emissive;
-        phongMaterial.shininess = (1 - originalMaterial.roughness) * 100;
+        //phongMaterial.shininess = (1 - originalMaterial.roughness) * 100;
   
         const map = originalMaterial.map;
         const normalMap = originalMaterial.normalMap;
-        if (map) phongMaterial.map = originalMaterial.map;
-        if (normalMap) phongMaterial.normalMap = originalMaterial.normalMap;
+        if (map) physicalMaterial.map = originalMaterial.map;
+        if (normalMap) physicalMaterial.normalMap = originalMaterial.normalMap;
   
-        child.material = phongMaterial;
+        child.material = physicalMaterial;
       }
     }
   });
@@ -148,11 +164,13 @@ async function initModelViewers(
     "Background Color": 0x191919,
     "Light Color": 0xffffff,
     "Diffuse Color": 0xffffff,
-    "Light Intensity": 3,
+    "Light Intensity": 1,
     "Show GLB colors": true,
+    "Show Environment Map": false,
+    "Enable Environment Lighting": true,
     "Auto Rotate": true,
     "Use Outline Effect": true,
-    "Material Applied": "Phong",
+    "Material Applied": "Physical",
     "Fog Enabled": true,
     "Fog Color": 0xcccccc,
   };
@@ -164,7 +182,25 @@ async function initModelViewers(
 
   gui
     .addColor(guiOptions, "Background Color")
-    .onChange((value: number) => (scene.background = new THREE.Color(value)));
+    .onChange((value: number) => {
+      backgroundColor = new THREE.Color(value);
+
+      if (!guiOptions['Show Environment Map']) {
+        scene.background = new THREE.Color(value)}
+      }
+    );
+  gui
+    .add(guiOptions, "Show Environment Map")
+    .onChange((value: boolean) => {
+      scene.background = value ? backgrounds.Field : backgroundColor;
+    });
+
+  gui
+    .add(guiOptions, "Enable Environment Lighting")
+    .onChange((value: boolean) => {
+      scene.environment = value ? backgrounds.Field : null;
+    });
+
   gui
     .addColor(guiOptions, "Light Color")
     .onChange((value: number) => dirLight.color.set(value));
@@ -214,7 +250,14 @@ async function initModelViewers(
           if ('color' in newMaterial) newMaterial.color.copy(originalMaterial.color);
           if ('emissive' in newMaterial) newMaterial.emissive.copy(originalMaterial.emissive);
           if ('shininess' in newMaterial) newMaterial.shininess = (1 - originalMaterial.roughness) * 100;
-    
+
+          if (originalMaterial.transparent) {
+            if ('transmission' in newMaterial) newMaterial.transmission = 1;
+            if ('clearcoat' in newMaterial) newMaterial.clearcoat = 1;
+            if ('ior' in newMaterial) newMaterial.ior = 1.17;
+            if ('thickness' in newMaterial) newMaterial.thickness = 5.12;
+          }
+
           const map = originalMaterial.map;
           const normalMap = originalMaterial.normalMap;
           if (map && 'map' in newMaterial) newMaterial.map = originalMaterial.map;
