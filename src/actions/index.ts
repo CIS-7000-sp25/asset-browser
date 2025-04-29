@@ -78,8 +78,9 @@ export const server = {
       assetName: z.string(),
       version: z.string(),
       file: z.instanceof(File),
+      accessToken: z.string(),
     }),
-    handler: async ({ assetName, version, file }) => {
+    handler: async ({ assetName, version, file, accessToken }) => {
       console.log("[DEBUG] API: assetName type:", typeof assetName);
       console.log("[DEBUG] API: API URL:", API_URL);
 
@@ -89,6 +90,7 @@ export const server = {
 
       const response = await fetch(`${API_URL}/assets/${assetName}/upload/`, {
         method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`},
         body: formData,
       });
 
@@ -107,11 +109,12 @@ export const server = {
   }),
 
   checkoutAsset: defineAction({
-    input: z.object({ assetName: z.string(), pennKey: z.string() }),
-    handler: async ({ assetName, pennKey }) => {
+    input: z.object({ assetName: z.string(), pennKey: z.string(), accessToken: z.string() }),
+    handler: async ({ assetName, pennKey, accessToken }) => {
       const response = await fetch(`${API_URL}/assets/${assetName}/checkout/`, {
         method: "POST",
         headers: {
+          "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
         // Note: backend expects 'pennkey' not 'pennKey' (lowercase "K")
@@ -162,14 +165,16 @@ export const server = {
       pennKey: z.string(),
       file: z.instanceof(File), // used to be an array, now just one because ZIP
       metadata: MetadataSchema,
+      accessToken: z.string(),
     }),
-    handler: async ({ assetName, pennKey, file, metadata }) => {
+    handler: async ({ assetName, pennKey, file, metadata, accessToken }) => {
       const formData = new FormData();
       formData.append("file", file);
 
       // S3 update, currently does not return version IDs - instead writes to a assetName/version/file path
       const response = await fetch(`${API_URL}/assets/${assetName}/checkin/`, {
         method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`},
         body: formData,
       });
 
@@ -416,7 +421,6 @@ export const server = {
     }
   }),
 
-  // move out of local storage 
   refreshToken: defineAction({
     accept: "form",
     input: z.object({

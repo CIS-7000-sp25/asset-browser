@@ -15,6 +15,9 @@ import CheckInStep1 from "./CheckInStep1";
 import CheckInStep2 from "./CheckInStep2";
 import CheckInStep3 from "./CheckInStep3";
 
+import { getAccessToken } from "@/utils/utils";
+import { toast } from "@/hooks/use-toast";
+
 interface AssetControlPanelProps {
   asset: AssetWithDetails;
   canCheckout: boolean;
@@ -116,7 +119,20 @@ const AssetControlPanel = ({
 
         <Button
           className="flex items-center gap-2"
-          onClick={() => setCheckInOpen(true)}
+          onClick={async () => {
+            let token = await getAccessToken()
+            if (!token.success) {
+              toast({
+                title: "Upload Error",
+                description: `You must be logged in to upload an asset.`,
+                variant: "destructive",
+              });
+              setTimeout(()=>{window.location.href = '/login/';}, 1500)
+              return;
+            }
+            
+            setCheckInOpen(true)
+          }}
           disabled={!canCheckin}
         >
           <Lock className="h-4 w-4" />

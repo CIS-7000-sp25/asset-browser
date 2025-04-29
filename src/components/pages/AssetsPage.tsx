@@ -19,6 +19,9 @@ import { actions } from "astro:actions";
 import { Check, ChevronDown, Filter, Plus, Search, User } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { getAccessToken } from "@/utils/utils";
+import { toast } from "@/hooks/use-toast";
+
 interface SearchBarProps {
   users: GetUsersBody["users"];
   onSearch: (search: string) => void;
@@ -97,7 +100,20 @@ const SearchBar = ({
           <Button
             variant="default"
             size="sm"
-            onClick={() => setCreateAssetOpen(true)}
+            onClick={async () => {
+              let token = await getAccessToken()
+              if (!token.success) {
+                toast({
+                  title: "Upload Error",
+                  description: `You must be logged in to upload an asset.`,
+                  variant: "destructive",
+                });
+                setTimeout(()=>{window.location.href = '/login/';}, 1500)
+                return;
+              } 
+              setCreateAssetOpen(true)
+            }
+          }
             className="flex items-center gap-1"
           >
             <Plus className="h-4 w-4" />

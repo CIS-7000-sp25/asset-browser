@@ -8,6 +8,7 @@ import { Label } from "../ui/label";
 import { actions } from "astro:actions";
 import CheckInStep2 from "./CheckInStep2";
 import CheckInStep3 from "./CheckInStep3";
+import {getAccessToken } from "../../utils/utils.tsx"
 
 interface UploadAssetFlowProps {
   open: boolean;
@@ -95,6 +96,11 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
       console.log(typeof(uploadedFiles[0]));
       console.log(`metadata: ${metadata.assetStructureVersion}`);
 
+      let result = await getAccessToken()
+      if (!result.success) {
+        throw new Error("You must be logged in to upload")
+      } 
+
       // Temporary code for now, most direct way to upload assets
       const formData = new FormData();
       formData.append("assetName", assetName);
@@ -115,6 +121,10 @@ const UploadAssetFlow = ({ open, onOpenChange, onComplete }: UploadAssetFlowProp
       setVerificationComplete(false);
       setMetadata({} as Metadata);
     } catch (error) {
+      if (error instanceof Error && error.message == "You must be logged in to upload") {
+        window.location.href = '/login/';
+      }
+      
       toast({
         title: "Error",
         description: `Failed to create asset. ${

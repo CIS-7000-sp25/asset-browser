@@ -13,6 +13,8 @@ import AssetDetailSkeleton from "../asset-detail/AssetDetailSkeleton";
 import AssetMetadata from "../asset-detail/AssetMetadata";
 import AssetPreview from "../asset-detail/AssetPreview";
 
+import { getAccessToken } from "@/utils/utils";
+
 interface AssetDetailPageProps {
   assetName: string;
 }
@@ -95,9 +97,24 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
   const handleCheckout = async () => {
     if (!assetName || !user || !asset) return;
 
+    let token = await getAccessToken()
+    if (!token.success) {
+      console.error("Error checking out asset:", "No authentication.");
+      toast({
+        title: "Checkout Error",
+        description: `You must be logged in to check out asset "${assetName}".`,
+        variant: "destructive",
+      });
+      setTimeout(()=>{window.location.href = '/login/';}, 1500)
+      return;
+    } 
+
+    let accessToken = token.accessToken;
+
     const { data, error } = await actions.checkoutAsset({
       assetName,
       pennKey: user.pennId,
+      accessToken: accessToken,
     });
 
     if (error) {
@@ -168,12 +185,27 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
     console.log("Asset name:", assetName);
     console.log("User:", user);
 
+    let token = await getAccessToken()
+    if (!token.success) {
+      toast({
+        title: "Check-in Error",
+        description: `You must be logged in to check in ${asset.name}.`,
+        variant: "destructive",
+      });
+      setTimeout(()=>{window.location.href = '/login/';}, 1500)
+      return;
+    } 
+
+    let accessToken = token.accessToken;
+
     // TO DO: Replace userFiles with a single file, not an array
     const formData = new FormData();
     formData.append("assetName", assetName);
     formData.append("pennKey", user.pennId);
     formData.append("file", userFiles[0]);
+    formData.append("accessToken", accessToken);
     // formData.append("metadata", metadata); // TO DO: formData cannot append custom metadata type?
+
 
     const { data, error } = await actions.checkinAsset(formData);
 
@@ -284,7 +316,7 @@ const AssetDetailPage = ({ assetName }: AssetDetailPageProps) => {
         <Button
           variant="ghost"
           className="flex items-center gap-1 hover:bg-secondary/80 transition-all"
-          onClick={() => (window.location.href = "/")}
+          onClick={() => window.history.back()}
         >
           <ChevronLeft className="h-4 w-4" />
           Back to Assets
